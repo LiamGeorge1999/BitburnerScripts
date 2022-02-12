@@ -1,0 +1,56 @@
+export async function main(ns) {
+	while (true) {
+		await ns.sleep(100);
+		while (ns.gang.canRecruitMember() && ns.gang.recruitMember(`gm${ns.gang.getMemberNames().length}`)) {
+			ns.tprint(`[GANG] recuited new gang member`)
+		}
+		var gangInformation = ns.gang.getGangInformation();
+		var idleMembers = [];
+		for (var member of ns.gang.getMemberNames()) {
+			var ascensionResult = ns.gang.getAscensionResult(member);
+			var ascensionMetric = gangInformation.isHacking ? ascensionResult.hack : Math.pow((ascensionResult.str * ascensionResult.def * ascensionResult.dex * ascensionResult.agi * ascensionResult.cha), 1 / 5)
+			//ns.tprint(ascensionResult ? `member: ${member} ascMetric: ${ascensionMetric} str: ${ascensionResult.str} def: ${ascensionResult.def} dex: ${ascensionResult.dex} agi: ${ascensionResult.agi} cha: ${ascensionResult.cha} hack: ${ascensionResult.hack}` : `Cannot ascend.`);
+			if (ascensionResult && ascensionMetric > 2) {
+				ns.tprint(`Ascending ${member}`);
+				ns.gang.ascendMember(member);
+			}
+
+			var memberInformation = ns.gang.getMemberInformation(member)
+			
+			if (!gangInformation.isHacking) {
+				//ns.tprint(`member: ${member} agi/mults: ${memberInformation.agi / (memberInformation.agi_asc_mult * memberInformation.agi_mult)} cha/mults: ${memberInformation.cha / (memberInformation.cha_asc_mult * memberInformation.cha_asc_mult)}`)
+				if (memberInformation.agi / (memberInformation.agi_asc_mult * memberInformation.agi_mult) < 70) {
+					ns.gang.setMemberTask(member, "Train Combat")
+				}
+				if (memberInformation.cha / (memberInformation.cha_asc_mult * memberInformation.cha_asc_mult) < 70) {
+					ns.gang.setMemberTask(member, "Train Charisma")
+				}
+			} else {
+				if (memberInformation.hack / (memberInformation.hack_asc_mult * memberInformation.hack_mult) < 70) {
+					ns.gang.setMemberTask(member, "Train Hacking")
+				}
+			}
+			if (memberInformation.task == "Unassigned") {
+				idleMembers.push(member);
+			}
+		}
+		if (!ns.fileExists("FormulasAPI.exe")) {
+			for (var member of idleMembers) {
+				ns.gang.setMemberTask(member, "Strongarm Civilians");
+			}
+		} else {
+			for (var task of ns.gang.getTaskNames()) {
+				var taskstats = ns.gang.getTaskStats(task);
+				for (var member of idleMembers) {
+					var currentTaskStats = ns.gang.getTaskStats(ns.gang.getMemberInformation(member).task);
+					if (ns.formulas.gang.moneyGain(gangInformation, member, taskstats) > ns.formulas.gang.moneyGain(gangInformation, member, currentTaskStats)) {
+						ns.gang.setMemberTask(member, task);
+					}
+				}
+			}
+		}
+
+
+
+	}
+}
