@@ -7,13 +7,7 @@ export async function main(ns) {
 	//	ns.exec("/utils/cleanSlate.js", ns.getHostname());
 	//});
 	ns.rm("Stages.txt");
-	ns.disableLog("getServerMaxRam");
-	ns.disableLog("getServerUsedRam");
-	ns.disableLog("getServerMoneyAvailable");
-	ns.disableLog("getServerMaxMoney");
-	ns.disableLog("getServerMinSecurityLevel");
-	ns.disableLog("getServerSecurityLevel");
-	ns.disableLog("exec");
+	ns.disableLog("ALL");
 	//findOptimalTarget() is not async
 	var target = ns.args[0] || util.findOptimalTarget() || "joesguns";
 	var hosts = ns.getPurchasedServers();

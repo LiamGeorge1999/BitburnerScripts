@@ -2,8 +2,7 @@ import { makeTable } from "/lib/tableMaker.js"
 /** @param {import(".").NS} ns **/
 export async function main(ns) {
 	
-	ns.disableLog("read");
-	ns.disableLog("sleep");
+	ns.disableLog("ALL");
 	ns.tail();
 	var columns = ["Script","threads","End Time","TimeDiff","Difficulty","Money"];
 	while(true) {
