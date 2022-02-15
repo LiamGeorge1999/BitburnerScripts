@@ -39,18 +39,18 @@ export async function main(ns) {
 		var hacktimeStamp = Date.now();
 		server.moneyAvailable -= ns.hackAnalyze(target) * hackReturn[1] * server.moneyAvailable;
 		server.hackDifficulty += ns.hackAnalyzeSecurity(hackReturn[1]);
-		//ns.tprint(`LOOP: Hack finishes in          ${hackReturn[0]}ms at ${localeHHMMSS(hackReturn[0], true)}: hackreturn: [${hackReturn}], money left: ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%, security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
+		ns.tprint(`LOOP: Hack finishes in          ${hackReturn[0]}ms at ${localeHHMMSS(hackReturn[0], true)}: hackreturn: [${hackReturn}], money left: ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%, security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
 		server = validateServer(ns, server);
-		if (hackReturn[1] != 0) { await ns.write("Stages.txt", `${"hack.js"},${hackReturn[1]},${localeHHMMSS(hacktimeStamp + hackReturn[0], true)},${hacktimeStamp + hackReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+		if (hackReturn[1] != 0) { await ns.write("Stages.txt", `${"hack.js"},${hackReturn[1]},${localeHHMMSS(hackReturn[0], true)},${hacktimeStamp + hackReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 		lastFinish = hacktimeStamp + hackReturn[0];
 
 		ns.print(`[INFO] LOOP: Stage weaken 1 - security = ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`)
 		var firstWeakenReturn = await stageWeaken(ns, server, hosts, hackReturn[0] - (Date.now() - hacktimeStamp));
 		var firstWeakenTimeStamp = Date.now();
 		server.hackDifficulty -= ns.weakenAnalyze(firstWeakenReturn[1]);
-		//ns.tprint(`LOOP: First weaken finishes in  ${firstWeakenReturn[0]}ms at ${localeHHMMSS(firstWeakenReturn[0], true)}: firstWeakenReturn: [${firstWeakenReturn}], security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
+		ns.tprint(`LOOP: First weaken finishes in  ${firstWeakenReturn[0]}ms at ${localeHHMMSS(firstWeakenReturn[0], true)}: firstWeakenReturn: [${firstWeakenReturn}], security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
 		server = validateServer(ns, server);
-		if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenTimeStamp + firstWeakenReturn[0], true)},${firstWeakenTimeStamp + firstWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+		if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenReturn[0], true)},${firstWeakenTimeStamp + firstWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 		lastFinish = firstWeakenTimeStamp + firstWeakenReturn[0];
 
 		ns.print(`[INFO] LOOP: Stage grow - money = ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%`)
@@ -58,21 +58,21 @@ export async function main(ns) {
 		var growTimeStamp = Date.now();
 		server.moneyAvailable = server.moneyMax;
 		server.hackDifficulty += ns.growthAnalyzeSecurity(growReturn[1]);
-		//ns.tprint(`LOOP: grow finishes in          ${growReturn[0]}ms at ${localeHHMMSS(growReturn[0], true)}: growReturn: [${growReturn}], money: ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%, security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
+		ns.tprint(`LOOP: grow finishes in          ${growReturn[0]}ms at ${localeHHMMSS(growReturn[0], true)}: growReturn: [${growReturn}], money: ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%, security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
 		server = validateServer(ns, server);
-		if (growReturn[1] != 0) { await ns.write("Stages.txt", `${"grow.js"},${growReturn[1]},${localeHHMMSS(growTimeStamp + growReturn[0], true)},${growTimeStamp + growReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+		if (growReturn[1] != 0) { await ns.write("Stages.txt", `${"grow.js"},${growReturn[1]},${localeHHMMSS(growReturn[0], true)},${growTimeStamp + growReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 		lastFinish = growTimeStamp + growReturn[0];
 
 		ns.print(`[INFO] LOOP: Stage weaken 2 - security = ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`)
 		secondWeakenReturn = await stageWeaken(ns, server, hosts, growReturn[0] - (Date.now() - growTimeStamp));
 		secondWeakenTimeStamp = Date.now();
 		server.hackDifficulty -= ns.weakenAnalyze(secondWeakenReturn[1]);
-		//ns.tprint(`LOOP: Second weaken finishes in ${secondWeakenReturn[0]}ms at ${localeHHMMSS(secondWeakenReturn[0], true)}: secondWeakenReturn: [${secondWeakenReturn}], security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
+		ns.tprint(`LOOP: Second weaken finishes in ${secondWeakenReturn[0]}ms at ${localeHHMMSS(secondWeakenReturn[0], true)}: secondWeakenReturn: [${secondWeakenReturn}], security: ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`);
 		server = validateServer(ns, server);
-		if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenTimeStamp + secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+		if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 		lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
 
-		//return 0;
+		return 0;
 	}
 
 	return null;
@@ -107,9 +107,9 @@ export async function setupStaging(ns, server, hosts) {
 	var firstWeakenReturn = await stageWeaken(ns, server, hosts);
 	var firstWeakenTimeStamp = Date.now();
 	server.hackDifficulty -= ns.weakenAnalyze(firstWeakenReturn[1]);
-	//ns.tprint(`SETUP: First weaken finishes in ${firstWeakenReturn[0]}ms`)
+	ns.tprint(`SETUP: First weaken finishes in ${firstWeakenReturn[0]}ms`)
 	server = validateServer(ns, server);
-	if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenTimeStamp + firstWeakenReturn[0], true)},${"null"},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+	if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenReturn[0], true)},${firstWeakenReturn[0]},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = firstWeakenTimeStamp + firstWeakenReturn[0];
 
 	ns.print(`[INFO] SETUP: grow - money = ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%`)
@@ -117,18 +117,18 @@ export async function setupStaging(ns, server, hosts) {
 	var growTimeStamp = Date.now();
 	server.moneyAvailable = server.moneyMax;
 	server.hackDifficulty += ns.growthAnalyzeSecurity(growReturn[1]);
-	//ns.tprint(`SETUP: grow finishes in         ${growReturn[0]}ms`)
+	ns.tprint(`SETUP: grow finishes in         ${growReturn[0]}ms`)
 	server = validateServer(ns, server);
-	if (growReturn[1] != 0) { await ns.write("Stages.txt", `${"grow.js"},${growReturn[1]},${localeHHMMSS(growTimeStamp + growReturn[0], true)},${growTimeStamp + growReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+	if (growReturn[1] != 0) { await ns.write("Stages.txt", `${"grow.js"},${growReturn[1]},${localeHHMMSS(growReturn[0], true)},${growTimeStamp + growReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = growTimeStamp + growReturn[0];
 
 	ns.print(`[INFO] SETUP: weaken 2 - security = ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`)
 	var secondWeakenReturn = await stageWeaken(ns, server, hosts, growReturn[0]);
 	var secondWeakenTimeStamp = Date.now();
 	server.hackDifficulty -= ns.weakenAnalyze(secondWeakenReturn[1]);
-	//ns.tprint(`SETUP: Second weaken finishes in ${secondWeakenReturn[0]}ms`)
+	ns.tprint(`SETUP: Second weaken finishes in ${secondWeakenReturn[0]}ms`)
 	server = validateServer(ns, server);
-	if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenTimeStamp + secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+	if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
 
 	return [(Math.max(firstWeakenReturn[0] ?? 0, growReturn[0] ?? 0, secondWeakenReturn[0] ?? 0, 10)), server, lastFinish];
@@ -153,9 +153,9 @@ export async function stageWeaken(ns, server, hosts, minimumEndWait = 0) {
 		duration = ns.formulas.hacking.weakenTime(server, ns.getPlayer());
 		ns.print(`weaken duration = ${duration / 1000}s`)
 	}
-	var waitDifference = Math.max(0, minimumEndWait - duration);
+	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
 	ns.print(`waitDifference: ${waitDifference}`);
-	ns.print(`Weakening ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s with ${threads} threads.`);
+	ns.print(`Weakening ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s for total of ${duration + minimumEndWait}s with ${threads} threads.`);
 
 	while (!stage(ns, "weaken.js", hosts, server.hostname, threads, waitDifference)) {
 		ns.print(`Not enough threads available, stage abandoned for re-attempt in 10 seconds.`)
@@ -184,7 +184,7 @@ export async function stageGrow(ns, server, hosts, minimumEndWait = 0) {
 		duration = ns.formulas.hacking.growTime(server, ns.getPlayer());
 		ns.print(`grow duration = ${duration / 1000}s`)
 	}
-	var waitDifference = Math.max(0, minimumEndWait - duration);
+	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
 	ns.print(`waitDifference: ${waitDifference}`);
 	ns.print(`Growing ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s with ${threads} threads.`);
 
@@ -220,7 +220,7 @@ export async function stageHack(ns, server, hosts, minimumEndWait = 0) {
 		duration = ns.formulas.hacking.hackTime(server, ns.getPlayer());
 		ns.print(`hack duration = ${duration / 1000}s`)
 	}
-	var waitDifference = Math.max(0, minimumEndWait - duration);
+	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
 	ns.print(`waitDifference: ${waitDifference}`);
 	ns.print(`Hacking ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s with ${threads} threads.`);
 
