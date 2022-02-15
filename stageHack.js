@@ -278,7 +278,7 @@ export function localeHHMMSS(ms = 0, includeMilliseconds = false) {
 	return new Date(ms + now).toLocaleTimeString() + (includeMilliseconds ? "." + new Date(ms + now).getMilliseconds() : "");
 }
 
-/** Stage a Hack, Grow or Weaken run. Assumes the first arg handed to the script will be interpreted as a waiting period before starting the hack/weaken/grow command.
+/** Finds the threads needed to hack a given amount of a server's money.
  * @param {import(".").NS} ns 
  * @param {Server} server			The server to be hacked.
  * @param {number} hackAmount		The amount of money to be hacked.
