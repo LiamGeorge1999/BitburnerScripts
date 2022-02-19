@@ -6,13 +6,13 @@ export async function main(ns) {
 	//	await ns.scp("/utils/cleanSlate.js", ns.getHostname());
 	//	ns.exec("/utils/cleanSlate.js", ns.getHostname());
 	//});
-	ns.rm("Stages.txt");
 	ns.disableLog("ALL");
 	//findOptimalTarget() is not async
-	var target = ns.args[0] || util.findOptimalTarget() || "joesguns";
+	var target =  ns.args[0] || util.findOptimalTarget() || "joesguns";
 	var hosts = ns.getPurchasedServers();
 	var server = ns.getServer(target);
 	ns.rm("Stages.txt");
+	ns.rm("stageLog.txt");
 	await ns.write("Stages.txt", `TARGET: ${server.hostname}\n`);
 
 	ns.clearLog();
@@ -103,9 +103,9 @@ export async function setupStaging(ns, server, hosts) {
 	server.hackDifficulty -= ns.weakenAnalyze(firstWeakenReturn[1]);
 	ns.tprint(`SETUP: First weaken finishes in ${firstWeakenReturn[0]}ms`)
 	server = validateServer(ns, server);
-	if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenReturn[0], true)},${firstWeakenReturn[0]},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
+	if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenReturn[0], true)},${Math.floor(firstWeakenReturn[0])},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = firstWeakenTimeStamp + firstWeakenReturn[0];
-
+	
 	ns.print(`[INFO] SETUP: grow - money = ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%`)
 	var growReturn = await stageGrow(ns, server, hosts, firstWeakenReturn[0]);
 	var growTimeStamp = Date.now();
@@ -151,7 +151,7 @@ export async function stageWeaken(ns, server, hosts, minimumEndWait = 0) {
 	ns.print(`waitDifference: ${waitDifference}`);
 	ns.print(`Weakening ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s for total of ${duration + minimumEndWait}s with ${threads} threads.`);
 
-	while (!stage(ns, "weaken.js", hosts, server.hostname, threads, waitDifference)) {
+	while (!stage(ns, "weaken.js", hosts, server.hostname, threads, waitDifference, duration)) {
 		ns.print(`Not enough threads available, stage abandoned for re-attempt in 10 seconds.`)
 		await ns.sleep(10000);
 	}
@@ -182,7 +182,7 @@ export async function stageGrow(ns, server, hosts, minimumEndWait = 0) {
 	ns.print(`waitDifference: ${waitDifference}`);
 	ns.print(`Growing ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s with ${threads} threads.`);
 
-	while (!stage(ns, "grow.js", hosts, server.hostname, threads, waitDifference)) {
+	while (!stage(ns, "grow.js", hosts, server.hostname, threads, waitDifference, duration)) {
 		ns.print(`Not enough threads available, stage abandoned for re-attempt in 10 seconds.`)
 		await ns.sleep(10000);
 	}
@@ -218,7 +218,7 @@ export async function stageHack(ns, server, hosts, minimumEndWait = 0) {
 	ns.print(`waitDifference: ${waitDifference}`);
 	ns.print(`Hacking ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s with ${threads} threads.`);
 
-	while (!stage(ns, "hack.js", hosts, server.hostname, threads, waitDifference)) {
+	while (!stage(ns, "hack.js", hosts, server.hostname, threads, waitDifference, duration)) {
 		ns.print(`Not enough threads available, stage abandoned for re-attempt in 10 seconds.`)
 		await ns.sleep(10000);
 	}
@@ -229,15 +229,17 @@ export async function stageHack(ns, server, hosts, minimumEndWait = 0) {
 
 /** Stage a Hack, Grow or Weaken run. Assumes the first arg handed to the script will be interpreted as a waiting period before starting the hack/weaken/grow command.
  * @param {import(".").NS} ns 
- * @param {String} script	The script to stage.
- * @param {String[]} hosts	The servers onwhich to host stages.
- * @param {String} target	The target whose money to hack.
- * @param {String} threads	The threads required to meet the desired result.
- * @param {number} wait		The minimum time before the stage is allowed to end.
- * @returns {Boolean}		Whether the stage was successfully set up.
+ * @param {String} script		The script to stage.
+ * @param {String[]} hosts		The servers onwhich to host stages.
+ * @param {String} target		The target whose money to hack.
+ * @param {String} threads		The threads required to meet the desired result.
+ * @param {number} wait			The minimum time before the stage is allowed to end.
+ * @param {number} duration		The (predicted) time taken by the nominal function in the script.
+ * @returns {Boolean}			Whether the stage was successfully set up.
 **/
-export function stage(ns, script, hosts, target, threads, wait) {
+export function stage(ns, script, hosts, target, threads, wait, duration) {
 	ns.print(`staging ${script} against ${target}, on ${hosts.length} hosts, with a target of ${threads} threads and an initial wait of ${wait / 1000}s.`)
+	let isWeaken = script == "Weaken.js";
 	var totalThreads = 0;
 	var serverThreads = [];
 	for (var host of hosts) {
@@ -247,12 +249,12 @@ export function stage(ns, script, hosts, target, threads, wait) {
 		//ns.print(`Threads available on ${host} = ${threadCount}`);
 	}
 	//ns.print(`total threads available for ${script} = ${totalThreads}`)
-	if (totalThreads > threads) {
+	if (totalThreads > threads && isWeaken) {
 		for (var serverThread of serverThreads) {
 			if (serverThread[1] > 0) {
 				var instanceThreads = Math.min(serverThread[1], threads);
 				//ns.print(`Attempting to host ${script} on ${serverThread[0]} with ${instanceThreads} threads as a min of [${serverThread[1]}, ${threads}].`)
-				ns.exec(script, serverThread[0], instanceThreads, target, wait);
+				ns.exec(script, serverThread[0], instanceThreads, target, wait, duration);
 				threads -= instanceThreads;
 			} //else { ns.print(`No threads left on ${serverThread[0]}`) }
 			if (threads < 1) {
@@ -260,10 +262,18 @@ export function stage(ns, script, hosts, target, threads, wait) {
 				return true;
 			}
 		}
-	} else {
-		return false;
 	}
-
+	else if (!isWeaken) {
+		for (var serverThread of serverThreads) {
+			if (serverThread[1]>threads) {
+				ns.exec(script, serverThread[0], threads, target, wait, duration);
+				ns.print(`Stage built, threadcount achieved.`)
+				return true;
+			}
+		}
+	
+	}
+		return false;
 }
 
 /* Returns a string representing the time of day.
