@@ -14,7 +14,7 @@ export async function main(ns) {
 	ns.rm("Stages.txt");
 	ns.rm("stageLog.txt");
 	await ns.write("Stages.txt", `TARGET: ${server.hostname}\n`);
-
+	//TODO: The setup must finish before other stages begin for timing to be estimated correctly.
 	ns.clearLog();
 	var setupReturn = await setupStaging(ns, server, hosts);
 	var lastFinish = setupReturn[2];
@@ -22,6 +22,7 @@ export async function main(ns) {
 	var secondWeakenReturn = [setupReturn[0], Math.ceil((ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)) / ns.weakenAnalyze(1))];
 	var secondWeakenTimeStamp = Date.now();
 	ns.print(`target selected: ${target}`);
+	var loops = 0;
 	while (true) {
 		await ns.sleep(10);
 		//TODO: Consider that ns.getHackTime() etc. may be running after a hack or grow script and therefore not be for min security
@@ -65,8 +66,10 @@ export async function main(ns) {
 		server = validateServer(ns, server);
 		if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 		lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
-
-		return 0;
+		loops++;
+		if (loops>3) {
+			return 0;
+		}
 	}
 
 	return null;
@@ -105,7 +108,8 @@ export async function setupStaging(ns, server, hosts) {
 	server = validateServer(ns, server);
 	if (firstWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${firstWeakenReturn[1]},${localeHHMMSS(firstWeakenReturn[0], true)},${Math.floor(firstWeakenReturn[0])},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = firstWeakenTimeStamp + firstWeakenReturn[0];
-	
+	await ns.sleep(firstWeakenReturn[0]);
+
 	ns.print(`[INFO] SETUP: grow - money = ${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%`)
 	var growReturn = await stageGrow(ns, server, hosts, firstWeakenReturn[0]);
 	var growTimeStamp = Date.now();
@@ -115,6 +119,7 @@ export async function setupStaging(ns, server, hosts) {
 	server = validateServer(ns, server);
 	if (growReturn[1] != 0) { await ns.write("Stages.txt", `${"grow.js"},${growReturn[1]},${localeHHMMSS(growReturn[0], true)},${growTimeStamp + growReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = growTimeStamp + growReturn[0];
+	await ns.sleep(growReturn[0]);
 
 	ns.print(`[INFO] SETUP: weaken 2 - security = ${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")}`)
 	var secondWeakenReturn = await stageWeaken(ns, server, hosts, growReturn[0]);
@@ -124,8 +129,9 @@ export async function setupStaging(ns, server, hosts) {
 	server = validateServer(ns, server);
 	if (secondWeakenReturn[1] != 0) { await ns.write("Stages.txt", `${"weaken.js"},${secondWeakenReturn[1]},${localeHHMMSS(secondWeakenReturn[0], true)},${secondWeakenTimeStamp + secondWeakenReturn[0] - lastFinish},${server.minDifficulty}+${ns.nFormat(server.hackDifficulty - server.minDifficulty, "0.00")},${ns.nFormat(100 * (server.moneyAvailable / server.moneyMax), "0.00")}%\n`); }
 	lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
+	await ns.sleep(secondWeakenReturn[0]);
 
-	return [(Math.max(firstWeakenReturn[0] ?? 0, growReturn[0] ?? 0, secondWeakenReturn[0] ?? 0, 10)), server, lastFinish];
+	return [0, server, lastFinish];
 }
 
 
@@ -144,7 +150,9 @@ export async function stageWeaken(ns, server, hosts, minimumEndWait = 0) {
 	}
 	var duration = ns.getWeakenTime(server.hostname);
 	if (ns.fileExists("Formulas.exe")) {
-		duration = ns.formulas.hacking.weakenTime(server, ns.getPlayer());
+		var tempServer = server;
+		tempServer.hackDifficulty = tempServer.minDifficulty;
+		duration = ns.formulas.hacking.weakenTime(tempServer, ns.getPlayer());
 		ns.print(`weaken duration = ${duration / 1000}s`)
 	}
 	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
@@ -175,7 +183,9 @@ export async function stageGrow(ns, server, hosts, minimumEndWait = 0) {
 	}
 	var duration = ns.getGrowTime(server.hostname);
 	if (ns.fileExists("Formulas.exe")) {
-		duration = ns.formulas.hacking.growTime(server, ns.getPlayer());
+		var tempServer = server;
+		tempServer.hackDifficulty = tempServer.minDifficulty;
+		duration = ns.formulas.hacking.growTime(tempServer, ns.getPlayer());
 		ns.print(`grow duration = ${duration / 1000}s`)
 	}
 	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
@@ -211,7 +221,9 @@ export async function stageHack(ns, server, hosts, minimumEndWait = 0) {
 	}
 	var duration = ns.getHackTime(server.hostname);
 	if (ns.fileExists("Formulas.exe")) {
-		duration = ns.formulas.hacking.hackTime(server, ns.getPlayer());
+		var tempServer = server;
+		tempServer.hackDifficulty = tempServer.minDifficulty;
+		duration = ns.formulas.hacking.hackTime(tempServer, ns.getPlayer());
 		ns.print(`hack duration = ${duration / 1000}s`)
 	}
 	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
