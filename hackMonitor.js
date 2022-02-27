@@ -4,7 +4,7 @@ export async function main(ns) {
 	
 	ns.disableLog("ALL");
 	ns.tail();
-	let columns = ["Script","threads","End Time","dt","Difficulty","Money"];
+	let columns = ["Script","threads","End Time","dt","PrevDif","Difficulty","PrevMon","Money"];
 	while(true) {
 		var preamble = "";
 		await ns.sleep(100);
