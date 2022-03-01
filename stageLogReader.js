@@ -5,7 +5,16 @@ export async function main(ns) {
 
     ns.tail();
     while(true) {
-        var stageInfos = [["Script", "initSec", "start", "delay", "p dur", "t dur", "diff", "end", "result"]];
+        var stageInfos = 
+        [["Script", 
+        "initSec", 
+        "start", 
+        "delay", 
+        // "p dur", 
+        // "t dur", 
+        "diff", 
+        "end", 
+        "result"]];
         for (let line of ns.read("stageLog.txt").split("\n")) {
             if (line !=""){
                 var row = [];

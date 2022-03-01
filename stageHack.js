@@ -71,7 +71,7 @@ export async function main(ns) {
 		if (secondWeakenReturn[1] != 0) { await logStage(ns, "weaken.js",secondWeakenReturn, secondWeakenTimeStamp, lastFinish, prevServer, server); }
 		lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
 		loops++;
-		if (loops>3) {
+		if (loops>=10) {
 			return 0;
 		}
 	}
@@ -228,6 +228,7 @@ export async function stageHack(ns, server, hosts, minimumEndWait = 0, setup = f
 		ns.print(`[ERROR] hackAnalyzeThreads handed an amount of money less than 0 or greater than available: avaiable: ${ns.nFormat(server.moneyAvailable, "0.00a")} / ${ns.nFormat(server.moneyMax, "0.00a")} serverdetails: name: ${server.hostname}, getServer: ${ns.getServer(server.hostname)}`);
 		return [0, 0];
 	}
+	//Magic number 590?
 	var duration = ns.getHackTime(server.hostname);
 	if (ns.fileExists("Formulas.exe")) {
 		var tempServer = { ...server };

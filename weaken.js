@@ -11,11 +11,11 @@ export async function main(ns) {
 	ns.exec("logWriter.js", "home", 1, "stageLog.txt",
 		`${["weaken.js",
 		Math.round(hackDifficulty), 
-		startDate.toLocaleTimeString(), 
+		startDate.toLocaleTimeString() + `.${startDate.getMilliseconds()}`, 
 		Math.floor(ns.args[1]), 
-		Math.floor(ns.args[2]), 
-		Math.floor((end - start)), 
+		//Math.floor(ns.args[2]), 
+		//Math.floor((end - start)), 
 		Math.floor((end - start) - ns.args[2]), 
-		endDate.toLocaleTimeString(), 
+		endDate.toLocaleTimeString() + `.${endDate.getMilliseconds()}`, 
 		ns.nFormat(res, "0.00")].join(",")}\n`);
 }
