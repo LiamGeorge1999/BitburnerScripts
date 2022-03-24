@@ -4,9 +4,30 @@ export class Util {
 
 	/**
 	 * @param {import(".").NS} _ns
+	 * @returns {Util}
 	**/
 	constructor(_ns) {
 		this.ns = _ns;
+	}
+
+	/** Finds the paths of all nodes.
+	 * @param {String} command		The command to run in the terminal.
+	**/
+	runTerminalCommand(command) {
+		
+		const terminalInput = document.getElementById("terminal-input");
+
+		// Set the value to the command you want to run.
+		terminalInput.value = command;
+	
+		// Get a reference to the React event handler.
+		const handler = Object.keys(terminalInput)[1];
+	
+		// Perform an onChange event to set some internal values.
+		terminalInput[handler].onChange({target:terminalInput});
+	
+		// Simulate an enter press
+		terminalInput[handler].onKeyDown({keyCode:13,preventDefault:()=>null});
 	}
 
 	/** Find the target from whom money can be extracted fastest at minimum security.
@@ -14,13 +35,13 @@ export class Util {
 	**/
 	findOptimalTarget() {
 		var targets = this.findAllServers();
-		var maxMoneyPerSecurity = 0;
+		var maxMetric = 0;
 		var optimalTarget = "";
 		for (var i = 0; i < targets.length; i++) {
 			var target = targets[i];
-			var moneyPerSecurity = this.ns.getServerMaxMoney(target) / this.ns.getServerMinSecurityLevel(target);
-			if (moneyPerSecurity > maxMoneyPerSecurity && this.ns.hasRootAccess(target) && this.ns.getServerRequiredHackingLevel(target) < this.ns.getHackingLevel()) {
-				maxMoneyPerSecurity = moneyPerSecurity;
+			var metric = this.ns.getServerMaxMoney(target) / this.ns.getServerMinSecurityLevel(target);
+			if (metric > maxMetric && this.ns.hasRootAccess(target) && this.ns.getServerRequiredHackingLevel(target) < this.ns.getHackingLevel()) {
+				maxMetric = metric;
 				optimalTarget = target;
 			}
 		}
@@ -108,7 +129,11 @@ export class Util {
 		var requiredPorts = this.ns.getServerNumPortsRequired(target);
 		if (requiredPorts < ports + 1) {
 			this.ns.tprint((this.ns.nuke(target) ? "" : "un") + "successfully owned " + target + " with " + ports + " vs " + requiredPorts + " ports.");
+			return true;
+		} else {
+			this.ns.tprint(`Not enough ports open on ${target} (${ports} < ${requiredPorts})`);
 		}
+		return false;
 	}
 
 	/** Finds the paths of all nodes. *Use ns.nFormat() instead.*
@@ -159,7 +184,8 @@ export class Util {
 			this.ns.print(`Arrayifying args from ${args} to ${[args]}`)
 			args = [args];
 		}
-		this.ns.print(`Flooding ${script} on [${hosts.length == 0 ? "" : hosts.join("\", \"")}],${clean ? "" : " not"} wiping targets, with [${args.length == 0 ? "" : args.join("\", \"")}] as args`)
+		let threadTotal = 0;
+		this.ns.print(`Flooding ${script} on [${hosts.length != 0 ? "" : hosts.join(", ")}],${clean ? "" : " not"} wiping targets, with [${args.length == 0 ? "" : args.join(", ")}] as args`)
 		for (var target of hosts) {
 			if (clean) {
 				this.ns.print(`Killing all on ${target}`)
@@ -176,13 +202,18 @@ export class Util {
 				this.ns.print(`flooding ${target}`);
 				this.ns.print(`RAM = ${this.ns.getServerMaxRam(target)} - ${this.ns.getServerUsedRam(target)} = ${this.ns.getServerMaxRam(target) - this.ns.getServerUsedRam(target)}`)
 				var threads = Math.floor((this.ns.getServerMaxRam(target) - this.ns.getServerUsedRam(target)) / this.ns.getScriptRam(script, target));
-
-				this.ns.print(`${transfer ? "" : "Un"}Successfully moved ${script} to run on ${target} with ${threads} threads and args = ["${args.join("\", \"")}"], with PID ${this.ns.exec(script, target, threads, ...args)}`)
+				if (threads > 0) {
+					this.ns.print(`${transfer ? "" : "Un"}Successfully moved ${script} to run on ${target} with ${threads} threads and args = ["${args.join("\", \"")}"], with PID ${this.ns.exec(script, target, threads, ...args)}`)
+					threadTotal += threads;
+				} else {
+					this.ns.print(`threadcount = 0`);
+				}
 			} else {
 				this.ns.print(`failed to flood ${target}`);
 			}
 			await this.ns.sleep(10);
 		}
+		return threadTotal;
 	}
 
 	/** Kills all running processes on all purchased servers.

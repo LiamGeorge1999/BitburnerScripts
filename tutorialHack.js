@@ -1,4 +1,4 @@
-/** @param {NS} ns **/
+/** @param {import(".").NS} ns **/
 export async function main(ns) {
 
 	var target = ns.args[0] == undefined ? "joesguns" : ns.args[0];

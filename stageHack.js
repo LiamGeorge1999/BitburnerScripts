@@ -7,6 +7,10 @@ export async function main(ns) {
 	//	ns.exec("/utils/cleanSlate.js", ns.getHostname());
 	//});
 	ns.disableLog("ALL");
+	ns.run("StageLogReader.js");
+	ns.tail("StageLogReader.js");
+	ns.run("hackMonitor.js");
+	ns.tail("hackMonitor.js");
 	//findOptimalTarget() is not async
 	var target =  ns.args[0] || util.findOptimalTarget() || "joesguns";
 	var hosts = ns.getPurchasedServers();
@@ -71,7 +75,7 @@ export async function main(ns) {
 		if (secondWeakenReturn[1] != 0) { await logStage(ns, "weaken.js",secondWeakenReturn, secondWeakenTimeStamp, lastFinish, prevServer, server); }
 		lastFinish = secondWeakenTimeStamp + secondWeakenReturn[0];
 		loops++;
-		if (loops>=10) {
+		if (loops>=10 && false) {
 			return 0;
 		}
 	}
@@ -166,7 +170,7 @@ export async function stageWeaken(ns, server, hosts, minimumEndWait = 0, setup =
 	}
 	var waitDifference = Math.max(0, 200 + minimumEndWait - duration);
 	ns.print(`waitDifference: ${waitDifference}`);
-	ns.print(`Weakening ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s for total of ${duration + minimumEndWait}s with ${threads} threads.`);
+	ns.print(`Weakening ${server.hostname} for ${duration / 1000}s after ${minimumEndWait / 1000}s for total of ${(duration + minimumEndWait)/1000}s with ${threads} threads.`);
 
 	while (!stage(ns, "weaken.js", hosts, server.hostname, threads, waitDifference, duration)) {
 		ns.print(`Not enough threads available, stage abandoned for re-attempt in 10 seconds.`)

@@ -8,7 +8,7 @@ export async function main(ns) {
     ns.tail();
     while(true) {
         let servers = util.findAllServers().sort((a, b) => {return a.moneyMax-b.moneyMax});
-        var serverInfos = [["hostname", "security", "money", "growth"]]
+        var serverInfos = [["hostname", "security", "money", "growth", "able"]]
         for(let hostname of servers) {
             let server = ns.getServer(hostname);
             var serverInfo = []
@@ -16,6 +16,7 @@ export async function main(ns) {
             serverInfo.push(`${server.minDifficulty}+${server.hackDifficulty-server.minDifficulty}`);
             serverInfo.push(`${ns.nFormat(server.moneyAvailable, "0.00a")}/${ns.nFormat(server.moneyMax, "0.00a")}`);
             serverInfo.push(`${server.serverGrowth}`);
+            serverInfo.push(`${server.openPortCount>=server.numOpenPortsRequired && server.requiredHackingSkill <= ns.getPlayer().hacking}`);
             if (server.moneyMax>0) {
                 serverInfos.push(serverInfo);
             }
