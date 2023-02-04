@@ -1,0 +1,12 @@
+Algorithmic Stock Trader III
+You are attempting to solve a Coding Contract. You have 10 tries remaining, after which the contract will self-destruct.
+
+
+You are given the following array of stock prices (which are numbers) where the i-th element represents the stock price on day i:
+
+145,193,95,17,46,78,105,22,169,23,14,100,59,61,96,32,52,65,58,164,167,48,92,69,7,153,92,158,20,71,129,194,16,17
+
+Determine the maximum possible profit you can earn using at most two transactions. A transaction is defined as buying and then selling one share of the stock. Note that you cannot engage in multiple transactions at once. In other words, you must sell the stock before you buy it again.
+
+If no profit can be made, then the answer should be 0
+

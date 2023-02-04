@@ -1,0 +1,14 @@
+Algorithmic Stock Trader IV
+You are attempting to solve a Coding Contract. You have 10 tries remaining, after which the contract will self-destruct.
+
+
+You are given the following array with two elements:
+
+[9, [61,21,50,96,72,3,82,31,130,132,163,99,27,2,41,61,113,76,197,4,72]]
+
+The first element is an integer k. The second element is an array of stock prices (which are numbers) where the i-th element represents the stock price on day i.
+
+Determine the maximum possible profit you can earn using at most k transactions. A transaction is defined as buying and then selling one share of the stock. Note that you cannot engage in multiple transactions at once. In other words, you must sell the stock before you can buy it again.
+
+If no profit can be made, then the answer should be 0.
+

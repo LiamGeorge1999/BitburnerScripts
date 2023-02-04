@@ -1,0 +1,5 @@
+{
+    "manageGang": "managers/manageGang.js",
+    "manageCorp": "managers/manageCorp.js",
+    "HUDMod": "Interfaces/HUDMod.js"
+}

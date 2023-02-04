@@ -1,0 +1,10 @@
+Algorithmic Stock Trader I
+You are attempting to solve a Coding Contract. You have 5 tries remaining, after which the contract will self-destruct.
+
+
+You are given the following array of stock prices (which are numbers) where the i-th element represents the stock price on day i:
+
+127,83,43,61,200,146,170,141,146,8,97,16,96,142,194,72,14,112,58,130,196,102,14,182,64,105,113,30,39,40,151,73,122,116,122
+
+Determine the maximum possible profit you can earn using at most one transaction (i.e. you can only buy and sell the stock once). If no profit can be made then the answer should be 0. Note that you have to buy the stock before you can sell it
+

@@ -1,6 +1,15 @@
 {
-    "bitburner.authToken": "/aq/6Bp82LtuP+r6NHASksvQyAgul2UhiCotKsZGoFDLpARXZu4t5PkOUom4UBAj",
-    "bitburner.fileWatcher.enable": true,
-    "bitburner.showFileWatcherEnabledNotification": true,
-    "bitburner.showPushSuccessNotification": true
+    "workbench.settings.useSplitJSON": true,
+    "javascript.format.insertSpaceAfterConstructor": false,
+    "javascript.format.semicolons": "insert",
+    "javascript.inlayHints.enumMemberValues.enabled": false,
+    "javascript.inlayHints.parameterNames.suppressWhenArgumentMatchesName": false,
+    "javascript.preferences.importModuleSpecifier": "project-relative",
+    "javascript.preferences.importModuleSpecifierEnding": "js",
+    "javascript.preferences.quoteStyle": "double",
+    "javascript.suggest.completeFunctionCalls": true,
+    "javascript.suggestionActions.enabled": true,
+    "js/ts.implicitProjectConfig.experimentalDecorators": false,
+    "typescript.preferences.importModuleSpecifier": "project-relative",
+    "typescript.preferences.importModuleSpecifierEnding": "js"
 }

@@ -1,0 +1,283 @@
+import {NS} from "NetscriptDefinitions"
+/** @param {NS} ns **/
+export class Util {
+	static ns: NS;
+
+	/**
+	 * @param {NS} _ns
+	 * @returns {Util}
+	**/
+	constructor(_ns: NS) {
+		Util.ns = _ns;
+	}
+	
+	quit() {
+		Util.ns.exit()
+	}
+	
+	/** Finds the paths of all nodes.
+	 * @param {String} command		The command to run in the terminal.
+	**/
+	public static runTerminalCommand(command: string) {
+		// Acquire a reference to the terminal text field
+		const terminalInput = document.getElementById("terminal-input");
+		if (terminalInput) {
+			// Acquire a reference to the terminal text field
+			// Set the value to the command you want to run.
+			// @ts-ignore
+			terminalInput.value = command;
+
+			// Get a reference to the React event handler.
+			// @ts-ignore
+			const handler = Object.keys(terminalInput)[1];
+
+			// Perform an onChange event to set some internal values.
+			// @ts-ignore
+			terminalInput[handler].onChange({target:terminalInput});
+
+			// Simulate an enter press
+			// @ts-ignore
+			terminalInput[handler].onKeyDown({key:'Enter',preventDefault:()=>null});
+		}
+	}
+
+	jump(input: string) {
+		if (input.indexOf("\\") != -1){
+            for (var name of input.split("\\")) {
+                Util.runTerminalCommand(`connect ${name}`);
+            }
+        } else {
+            var serverPaths = Util.findConnectionPaths(Util.ns.getServer().hostname);
+            
+            for (var serverPath of serverPaths) {
+                if (serverPath[1].toUpperCase().indexOf(input.toUpperCase()) != -1) {
+                    for (var name of serverPath[0].split("\\")) {
+                        var command = `connect ${name}`;
+                        Util.runTerminalCommand(command);
+                    }
+                    return
+                }
+            }
+        }
+	}
+
+	/** Find the target from whom money can be extracted fastest at minimum security.
+	 * @returns {String}	The target from whom money can be extracted fastest at minimum security.
+	**/
+	findOptimalTarget() {
+		var targets = this.findAllServers();
+		var maxMetric = 0;
+		var optimalTarget = "";
+		for (var i = 0; i < targets.length; i++) {
+			var target = targets[i];
+			var metric = Util.ns.getServerMaxMoney(target) / Util.ns.getServerMinSecurityLevel(target);
+			if (metric > maxMetric && Util.ns.hasRootAccess(target) && Util.ns.getServerRequiredHackingLevel(target) < Util.ns.getHackingLevel()) {
+				maxMetric = metric;
+				optimalTarget = target;
+			}
+		}
+		return optimalTarget;
+	}
+
+	/** Finds the paths of all nodes.
+	 * @param {String} host?		The point at which to begin connection paths. Defaults to "home".
+	 * @param {String} serverPaths?	The array of paths to nodes who have already been found.
+	 * @param {String} servers?		The array of nodes which have already been found.
+	 * @param {String} path?		The path of the node parent to the current node.
+	 * @returns {String[]}			An array of paths to all nodes.
+	**/
+	static findConnectionPaths(host : string = "home", serverPaths: string[][] = [], servers: string[]= [], path: string = "") {
+		var newpath = path + "\\" + host;
+		//Util.ns.tprint("path: " + newpath);
+		if (!servers.includes(host)) {
+			serverPaths.push([newpath, host]);
+			servers.push(host)
+			var neighbours = Util.ns.scan(host);
+			for (var neighbour of neighbours) {
+				serverPaths = Util.findConnectionPaths(neighbour, serverPaths, servers, newpath);
+			}
+		}
+		return serverPaths;
+	}
+
+	/** Finds the paths and directories of all files.
+	 * @returns {String[]}			An array of paths and directories of all files.
+	**/
+	findAllFiles() {
+		var serverPaths = Util.findConnectionPaths();
+		var files: string[][] = [];
+		for (var serverPath of serverPaths) {
+			var serverFiles = Util.ns.ls(serverPath[1]);
+			for (var serverFile of serverFiles) {
+				files.push([serverPath[0], serverFile]);
+			}
+		}
+		return files;
+	}
+
+	/** Finds an array of all server names.
+	 * @returns {String[]}			An array of all server names.
+	**/
+	findAllServers() {
+		var targets = Util.ns.scan("home");
+		for (var target of targets) {
+			var newTargets = Util.ns.scan(target);
+			for (var newt of newTargets) {
+				if (!targets.includes(newt)) {
+					targets.push(newt);
+				}
+			}
+		}
+		return targets;
+	}
+
+	/** Runs all available port hacks on the provided target, and then nukes if possible.
+	 * @param {String} target		The target server.
+	**/
+	ownServer(target: string) {
+		target = target || Util.ns.getHostname();
+		var ports = 0;
+		if (Util.ns.fileExists("BruteSSH.exe", "home")) {
+			Util.ns.brutessh(target);
+			ports += 1;
+		}
+		if (Util.ns.fileExists("FTPCrack.exe", "home")) {
+			Util.ns.ftpcrack(target);
+			ports += 1;
+		}
+		if (Util.ns.fileExists("relaySMTP.exe", "home")) {
+			Util.ns.relaysmtp(target);
+			ports += 1;
+		}
+		if (Util.ns.fileExists("HTTPWorm.exe", "home")) {
+			Util.ns.httpworm(target);
+			ports += 1;
+		}
+		if (Util.ns.fileExists("SQLInject.exe", "home")) {
+			Util.ns.sqlinject(target);
+			ports += 1;
+		}
+		var requiredPorts = Util.ns.getServerNumPortsRequired(target);
+		if (requiredPorts < ports + 1) {
+			Util.ns.nuke(target);
+			//this.backdoor(target);
+			Util.ns.tprint((Util.ns.hasRootAccess(target) ? "" : "un") + "successfully owned " + target + " with " + ports + " vs " + requiredPorts + " ports.");
+			return true;
+		} else {
+			Util.ns.tprint(`Not enough ports open on ${target} (${ports} < ${requiredPorts})`);
+		}
+		return false;
+	}
+
+	backdoor(target: string) {
+		var host = Util.ns.getServer().hostname;
+		var util = new Util(Util.ns);
+		util.jump(target);
+		Util.runTerminalCommand("backdoor");
+		util.jump(host);
+	}
+
+	/** Formats a number. *Use ns.nFormat() instead.*
+	 * @deprecated
+	 * @param {number} cost3		The number to format.
+	 * @param {number} type?		The style inwhich to format the number.
+	 * @returns {String}			The formatted number.
+	**/
+	numberToString(cost3: number, type: number = -1) {
+		var cost = cost3;
+		var order3 = 0;
+		var order = 0;
+		let orders = [[" ", "thousand", "million", "billion", "Trillion", "quadrillion", "Quintillion", "sextillion", "Septillion"],
+		[" ", "k", "m", "b", "T", "q", "Q", "s", "S",],
+		["GB", "TB", "PB", "YB"]];
+
+		while (cost3 > 1000) {
+			cost3 = cost3 / 1000;
+			order3 += 1;
+		}
+		while (cost > 10) {
+			cost = cost / 10;
+			order += 1;
+		}
+		var trail = ""
+		if (type > -1) {
+			return cost3 + orders[type][order3];
+		} else if (type == -1) {
+			if (order3 > 0 && Number.isInteger(order3)) {
+				return cost3 + "e" + (3 * order3);
+			}
+		} else {
+			if (order > 0 && Number.isInteger(order)) {
+				return cost + "e" + order;
+			}
+		}
+		return cost;
+	}
+	//TODO: Fix flood
+	/** Runs as many threads of the provided scripts on the indicated targets as their RAM can hold.
+	 * @param {String} script			The script withwhich to flood the targets.
+	 * @param {String[]} [hosts]		The hosts of the flood. Defaults to the list of purchased servers.
+	 * @param {Boolean} [clean]			Determines whether or not to run ns.killall() against the hosts.
+	 * @param {...String[]} [args]		The arguments to pass to the script.
+	**/
+	async flood(script: string, hosts: string[] = Util.ns.getPurchasedServers(), clean: boolean = false, ...args: string[]) {
+		if (!Array.isArray(args)) {
+			Util.ns.print(`Arrayifying args from ${args} to ${[args]}`)
+			args = [args];
+		}
+		let threadTotal = 0;
+		Util.ns.print(`Flooding ${script} on [${hosts.length != 0 ? "" : hosts.join(", ")}],${clean ? "" : " not"} wiping targets, with [${args.length == 0 ? "" : args.join(", ")}] as args`)
+		for (var target of hosts) {
+			if (clean) {
+				Util.ns.print(`Killing all on ${target}`)
+				var processes = Util.ns.ps(target);
+				for (var process of processes) {
+					Util.ns.print(process);
+					if (process.filename != "floodSelf.js") { Util.ns.kill(process.pid); }
+				}
+			}
+			Util.ns.print(`scp start`);
+			var transfer = await Util.ns.scp(script, "home", target);
+			Util.ns.print(`scp finished`);
+			if (target == "home" || transfer) {
+				Util.ns.print(`flooding ${target}`);
+				Util.ns.print(`RAM = ${Util.ns.getServerMaxRam(target)} - ${Util.ns.getServerUsedRam(target)} = ${Util.ns.getServerMaxRam(target) - Util.ns.getServerUsedRam(target)}`)
+				var threads = Math.floor((Util.ns.getServerMaxRam(target) - Util.ns.getServerUsedRam(target)) / Util.ns.getScriptRam(script, target));
+				if (threads > 0) {
+					Util.ns.print(`${transfer ? "" : "Un"}Successfully moved ${script} to run on ${target} with ${threads} threads and args = ["${args.join("\", \"")}"], with PID ${Util.ns.exec(script, target, threads, ...args)}`)
+					threadTotal += threads;
+				} else {
+					Util.ns.print(`threadcount = 0`);
+				}
+			} else {
+				Util.ns.print(`failed to flood ${target}`);
+			}
+			await Util.ns.sleep(10);
+		}
+		return threadTotal;
+	}
+
+	/** Kills all running processes on all purchased servers.
+	**/
+	killAllServers() {
+		var hosts = Util.ns.getPurchasedServers();
+		for (var host of hosts) {
+			Util.ns.killall(host);
+		}
+	}
+
+	
+
+	/** finds geometric mean of provided numbers.
+	 * @param {number[]} ...numbers	The numbers of which to find the geometric mean
+	 * @returns {number} 			The geometric mean of the inputted numbers
+	**/
+	static geometricMean(...numbers: any[]): number {
+		var product = 1;
+		for (var number of numbers) {
+			product = product * number;
+		}
+		return Math.pow(product, 1 / numbers.length);
+	}
+
+}
