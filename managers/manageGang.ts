@@ -1,6 +1,6 @@
 import { TableMaker } from "../lib/tableMaker.js"
 import { Util } from "../Utils"
-import { GangGenInfo, GangMemberInfo, GangOtherInfo, NS } from "../NetscriptDefinitions"
+import { GangGenInfo, GangMemberInfo, GangOtherInfo, NS } from ".@ns"
 
 const ascensionThreshhold = 1.6;
 const refreshRate = 100; //in ms

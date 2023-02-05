@@ -1,6 +1,6 @@
 /** @param {NS} ns **/
 
-import { NS } from "../NetscriptDefinitions"
+import { NS } from ".@ns"
 import { Solution } from "../sol/solutionBase.js";
 
 //incomplete

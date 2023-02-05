@@ -1,4 +1,4 @@
-import { Util } from "../Utils.js"
+import { Util } from "Utils"
 import {Server, Player, NS} from "/NetscriptDefinitions"
 
 /** @param {.NS} ns **/

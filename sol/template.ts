@@ -1,5 +1,5 @@
 import { Solution } from "../sol/solutionBase.js";
-import {NS} from "../NetscriptDefinitions"
+import {NS} from ".@ns"
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {

@@ -1,5 +1,5 @@
-import {Util} from "../Utils.js"
-import {NS} from "../NetscriptDefinitions"
+import {Util} from "../Utils"
+import {NS} from "../NetscriptDefinitions.js"
 
 // export function autocomplete(data, args) {
 //     return [...data.servers];

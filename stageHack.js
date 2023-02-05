@@ -1,4 +1,4 @@
-import { Util } from "../Utils.js"
+import { Util } from "./Utils"
 /** @param {.NS} ns **/
 export async function main(ns) {
 	var util = new Util(ns);

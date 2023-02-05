@@ -1,5 +1,5 @@
-import {Util} from "../Utils.js"
-import {NS} from "/NetscriptDefinitions"
+import {Util} from "./Utils"
+import {NS} from "./NetscriptDefinitions"
 
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
@@ -8,7 +8,7 @@ export async function main(ns: NS) {
 	while (!hackedAll) {
 		hackedAll = true;
 		var targets = ["CSEC","I.I.I.I","avmnite-02h", "run4theh111z"];
-		var completedTargets = [];
+		var completedTargets: string[] = [];
         var util = new Util(ns);
 		for (let target of targets) {
 			var hackingLevel = ns.getHackingLevel();

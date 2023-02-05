@@ -1,5 +1,5 @@
 /** @param {NS} ns **/
-import {NS} from "../NetscriptDefinitions"
+import {NS} from ".@ns"
 export async function main(ns: NS) {
     const args = ns.flags([["help", false]]);
     const debugMode = false;

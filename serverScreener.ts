@@ -1,6 +1,6 @@
-import { Util } from "../Utils.js"
-import { TableMaker } from "../lib/tableMaker.js"
-import {NS} from "/NetscriptDefinitions"
+import { Util } from "./Utils"
+import { TableMaker } from "./lib/tableMaker.js"
+import {NS} from "./NetscriptDefinitions"
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
     ns.disableLog("ALL");

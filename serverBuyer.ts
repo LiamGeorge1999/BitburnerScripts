@@ -1,4 +1,4 @@
-import { Util } from "../Utils.js"
+import { Util } from "./Utils"
 import {GangGenInfo, GangMemberInfo, GangOtherInfo, NS} from "NetscriptDefinitions"
 /** @param {NS} ns **/
 export async function main(ns: NS) {

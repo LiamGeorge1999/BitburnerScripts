@@ -1,9 +1,28 @@
 //@typescript-ignore
 import { TableMaker } from "../lib/tableMaker.js"
-import {CityName, Division, NS} from "../NetscriptDefinitions"
+import { CityName } from "../lib/CityName.js"
+import {CorporationInfo, Division, NS} from "../NetscriptDefinitions.js"
+
+var corpName: string = "Babbage's Cabbages";
+var corpo: CorporationInfo;
+var agricultureDivisionName: string = "Cabbages";
+var agricultureDivision: Division;
+var cities: Array<CityName> = [CityName.Aevum, 
+                                CityName.Chongqing, 
+                                CityName.Ishima, 
+                                CityName.NewTokyo, 
+                                CityName.Sector12, 
+                                CityName.Volhaven];
+
+enum CorporationStage {
+    Early
+}
+
+var stage: CorporationStage = CorporationStage.Early;
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {
+    ns.clearLog();
     ns.disableLog("ALL");
     while (true) {
         await manageCorp(ns);
@@ -11,45 +30,43 @@ export async function main(ns: NS) {
     }
 }
 
-var corpName: string = "Babbage's Cabbages";
-var agricultureDivisionName: string = "Cabbages";
-var agricultureDivision: Division;
-var cities: Array<CityName> = [CityName.Aevum, CityName.Chongqing, CityName.Ishima, CityName.NewTokyo, CityName.Sector12, CityName.Volhaven];
-
 async function manageCorp(ns: NS) {
+    attemptToCreateCorp(ns, corpName);
 
-    if (ns.corporation.hasCorporation()){
-        corpName = ns.corporation.getCorporation().name;
-    }
-    if (!ns.corporation.hasCorporation()){
-        atteptToCreateCorp(ns, corpName);
-    }
-
-    var corpo = ns.corporation.getCorporation();
+    corpName = ns.corporation.getCorporation().name;
+    corpo = ns.corporation.getCorporation();
     ns.print("Creating Industry");
-    //test
-    if (!ns.corporation.getDivision(agricultureDivisionName)) {
-        ns.corporation.expandIndustry("Agriculture", agricultureDivisionName);
-        agricultureDivision = ns.corporation.getDivision(agricultureDivisionName);
-    }
+
+    if (!ns.corporation.getDivision(agricultureDivisionName)) ns.corporation.expandIndustry("Agriculture", agricultureDivisionName);
+    
     agricultureDivision = ns.corporation.getDivision(agricultureDivisionName);
-    if (agricultureDivision.cities.length < cities.length) {
-        expandToAllCities(ns, agricultureDivision);
+
+    if (!ns.corporation.hasUnlockUpgrade("Smart Supply")) ns.corporation.unlockUpgrade("Smart Supply");
+
+    if (agricultureDivision.cities.length < cities.length) expandToAllCities(ns, agricultureDivision);
+    
+    if (ns.corporation.hasUnlockUpgrade("Warehouse API")) buyWarehouses(ns, agricultureDivision);
+    
+    for (var divisionName of corpo.divisions) {
+        var division = ns.corporation.getDivision(divisionName);
+        for (var city of division.cities) {
+            var office = ns.corporation.getOffice(divisionName, city);
+            while (office.employees < 3) {
+                ns.corporation.hireEmployee(divisionName, city);
+            }
+        }
     }
-    buyWarehouses(ns, agricultureDivision, agricultureDivision.cities
-                                            .filter((cityName: CityName) => { 
-                                                    !ns.corporation.hasWarehouse(agricultureDivisionName, cityName) 
-                                            }));
-
-
 
 
     printCorpo(ns);
     await ns.sleep(100);
 }
 
-function buyWarehouses(ns: NS, division: Division, cities: Array<CityName>) {
+function buyWarehouses(ns: NS, division: Division) {
     //test
+    cities = agricultureDivision.cities.filter((cityName: CityName) => { 
+        !ns.corporation.hasWarehouse(agricultureDivisionName, cityName) 
+        })
     if (cities.length == 0) return
     ns.print("buying warehouses: " + JSON.stringify(cities));
     for (var city of cities) {
@@ -58,20 +75,21 @@ function buyWarehouses(ns: NS, division: Division, cities: Array<CityName>) {
 }
 
 function expandToAllCities(ns: NS, division: Division) {
-    for (var city of cities) {
-        if (division.cities.indexOf(city) != -1) {
-            ns.corporation.expandCity(division.name, city);
-        }
+    ns.print(`current cities: ${JSON.stringify(division.cities)}`);
+    for (var city of cities.filter((value) => {return !division.cities.includes(value)})) {
+        ns.corporation.expandCity(division.name, city);
     }
 }
 
-function atteptToCreateCorp(ns: NS, corpName: string) {
-    
-    var createdCorp = ns.corporation.createCorporation(corpName, ns.getPlayer().bitNodeN != 3)
-    if (createdCorp) {
-        ns.toast(`Created corp ${corpName}!`); 
+function attemptToCreateCorp(ns: NS, corpName: string) {
+    while (!ns.corporation.hasCorporation()) {
+        ns.print(`attempting to make corp ${corpName}`);
+        var createdCorp = ns.corporation.createCorporation(corpName, ns.getPlayer().bitNodeN != 3)
+        if (createdCorp) {
+            ns.toast(`Created corp ${corpName}!`); 
+        }
+        ns.sleep(10000);
     }
-
 }
 
 /** @param {NS} ns **/

@@ -1,9 +1,9 @@
-import { Util } from "../Utils.js"
+import { Util } from "./Utils"
 import {NS} from "./NetscriptDefinitions"
 
-import { ArrayJumpingGame } from "/sol/ArrayJumpingGame.js";
-import { ValidMathExpressions } from "/sol/findAllValidMathExpressions.js";
-import { Solution } from "/sol/solutionBase.js";
+import { ArrayJumpingGame } from "./sol/ArrayJumpingGame.js";
+import { ValidMathExpressions } from "./sol/findAllValidMathExpressions.js";
+import { Solution } from "./sol/solutionBase.js";
 
 
 /** @param {NS} ns **/

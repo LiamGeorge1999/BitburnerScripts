@@ -6977,7 +6977,7 @@ type CorpIndustryName =
 
 /** Names of all cities
  * @public */
-declare enum CityName {
+export declare enum CityName {
   Aevum = "Aevum",
   Chongqing = "Chongqing",
   Sector12 = "Sector-12",

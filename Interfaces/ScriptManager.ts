@@ -1,5 +1,5 @@
 /** @param {NS} ns **/
-import {NS} from "../NetscriptDefinitions"
+import {NS} from ".@ns"
 export async function main(ns: NS) {
    var manager = new ScriptManager(ns);
    ns.print(ns.read("Interfaces/scripts.txt").length);

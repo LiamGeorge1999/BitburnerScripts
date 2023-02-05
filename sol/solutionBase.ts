@@ -1,4 +1,4 @@
-import { NS } from "../NetscriptDefinitions.js";
+import { NS } from ".@ns.js";
 
 export abstract class Solution {
 

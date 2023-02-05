@@ -1,5 +1,5 @@
-import { TableMaker } from "../lib/tableMaker.js"
-import {NS} from "/NetscriptDefinitions"
+import { TableMaker } from "./lib/tableMaker.js"
+import {NS} from "./NetscriptDefinitions"
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
 	//@ts-ignore
