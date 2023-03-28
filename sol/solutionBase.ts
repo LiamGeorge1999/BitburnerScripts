@@ -1,14 +1,16 @@
-import { NS } from ".@ns.js";
+import { NS } from "../../NetscriptDefinitions";
 
 export abstract class Solution {
 
     ns: NS;
 	debugMode: Boolean;
+    public static contractName: string;
 
     constructor(ns: NS, debugMode = false) {
         this.ns = ns;
 		this.debugMode = debugMode;
     }
+
 
     abstract determine(...inputs : any): any;
 

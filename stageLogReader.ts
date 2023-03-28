@@ -1,11 +1,15 @@
 import { TableMaker } from "./lib/tableMaker.js"
-import {NS} from "./NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 /** @param {NS} ns **/
 export async function main(ns: NS) {
     ns.disableLog("ALL");
 
     ns.tail();
     while(true) {
+        var readValue = ns.readPort(1);
+        if (readValue != "NULL PORT DATA") {
+            ns.exec("logWriter.js", "home", 1, "stageLog.txt", readValue);
+        }
         var stageInfos = 
         [["Script", 
         "initSec", 

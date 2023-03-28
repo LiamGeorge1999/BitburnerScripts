@@ -1,31 +1,29 @@
 import { Util } from "./Utils"
-import {NS} from "./NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 
-import { ArrayJumpingGame } from "./sol/ArrayJumpingGame.js";
-import { ValidMathExpressions } from "./sol/findAllValidMathExpressions.js";
-import { Solution } from "./sol/solutionBase.js";
+import { ArrayJumpingGame } from "./sol/ArrayJumpingGame";
+import { ValidMathExpressions } from "./sol/findAllValidMathExpressions";
+import { Solution } from "./sol/solutionBase";
+import { SubArrayWithMaximumSum } from "./sol/subarrayWithMaximumSum";
 
-
+export type Newable<T> = { new (...args: any[]): T; };
 /** @param {NS} ns **/
 export async function main(ns: NS) {
+	ns.clearLog();
 	ns.tail();
 	ns.disableLog("scan");
 	ns.disableLog("sleep");
 	ns.clearLog();
 	var util = new Util(ns);
-	var targets = util.findAllServers();
-	//ns.print(targets);
 	while (true) {
 		var count = 0;
-		for (var target of targets) {
+		var contracts = Util.searchForFiles(ns, ".cct");
+		for (var contract of contracts) {
 			//ns.print(target);
-			var files = ns.ls(target, ".cct");
-			for (var file of files) {
-				await ns.sleep(10);
-				ns.print(`${target}/${file}\n${ns.codingcontract.getContractType(file, target)}\n${ns.codingcontract.getData(file, target)}\n\n`);
-				solve(ns, file, target);
-				count++;
-			}
+			await ns.sleep(10);
+			ns.print(`\n\n${contract.hostName}/${contract.fileName}\n${ns.codingcontract.getContractType(contract.fileName, contract.hostName)}\n${ns.codingcontract.getData(contract.fileName, contract.hostName)}`);
+			var success = await solve(ns, contract.fileName, contract.hostName);
+			count++;
 		}
 		if (count) {
 			ns.print(`[WARN] There are ${count} contacts found and left uncompleted.`);
@@ -40,63 +38,62 @@ export async function main(ns: NS) {
  * @param {String} file			The name of the contract file.
  * @param {String} target		The hostname of the server that the contract is on.
 **/
-async function solve(ns: NS, file: string, hostname: string) {
-	var types = [
-		"Minimum Path Sum in a Triangle",
-		"Merge Overlapping Intervals",
-		"Array Jumping Game",
-		"Subarray with Maximum Sum",
-		"Algorithmic Stock Trader I",
-		"Algorithmic Stock Trader II",
-		"Algorithmic Stock Trader III",
-		"Algorithmic Stock Trader IV"
-	]
-	var solvers = [
-		"/sol/minimumPathSum.js",
-		"/sol/mergeOverlappingIntervals.js",
-		"/sol/arrayJumpingGame.js",
-		"/sol/subarrayWithMaximumSum.js",
-		"/sol/algorithmicStockTrader.js",
-		"/sol/algorithmicStockTrader.js",
-		"/sol/algorithmicStockTrader.js",
-		"/sol/algorithmicStockTrader.js"
-	]
+async function solve(ns: NS, file: string, hostname: string): Promise<boolean> {
 
 	var problems: Map<string, Solution> = new Map<string, Solution>([
-		["Array Jumping Game", new ArrayJumpingGame(ns)],
-		["Find All Valid Math Expressions", new ValidMathExpressions(ns)]
+		[ArrayJumpingGame.contractName, new ArrayJumpingGame(ns, true)],
+		[ValidMathExpressions.contractName, new ValidMathExpressions(ns, true)],
+		[SubArrayWithMaximumSum.contractName, new SubArrayWithMaximumSum(ns, true)]
 	]);
-
 	let type = ns.codingcontract.getContractType(file, hostname);
+	ns.print(`Checking for ${type} solver`);
 	let solver = problems.get(type);
-	if (solver) {
+	if (solver && solver["determine"]) {
+		ns.print(`${type} found!`);
 		var experience = getExperience(ns);
 		if (experience) {
+			ns.print(`Experience found: ${JSON.stringify(experience)}`);
 			var input = ns.codingcontract.getData(file, hostname);
-			var answer = solver.determine();
+			ns.print(`input: ${input}`);
+			try {ns.print(`JSONified input = ${JSON.stringify(input)}`)} 
+			//@ts-ignore
+			catch(e) {ns.alert(e.message)}
+			//ns.print(`attempting solver ${solver["determine"]}`);
+			var answer = await solver.determine(ns, input);
+			ns.print(`answer for ${type} with input ${input} deduced as ${answer}`);
 			if (!experience[type]) {
 				experience[type] = {}
 			}
 			if (!experience[type][input]){
 				experience[type][input] = {}
 			}
-			var memory = experience[type][input];
-			if (memory.indexOf(answer) == -1) {
-				var result = ns.codingcontract.attempt(answer, file, hostname);
-				memory[answer] = !!result
+
+			let memory = experience[type][input][answer];
+
+			if (memory === false) {
+				ns.print(`Found failed attempt at ${type} with input ${input} and result ${answer}.`);
+				return false;
+
+			} else if (memory === true) {
+				ns.print(`remembered correct answer, attempting contract.`);
+				result = attempt(ns, answer, file, hostname);
+				if (result) ns.print(`[SUCCESS] ${result}`);
+				else ns.print([`[ERROR] Worrying failure! Remembered correct answer was wrong!`]);
+				experience[type][input][answer] = !!result;
+
+			} else {
+				ns.print(`No experience found for ${type} with input ${input} and result ${answer}.`);
+				var result = attempt(ns, answer, file, hostname);
+				experience[type][input][answer] = !!result;
 				if (result) {
 					ns.print(result);
+					return true;
+				}
+				else {
+					return false;
 				}
 			}
-			else {
-				if (memory[answer]) {
-					ns.print("remembered answer, attempting contract");
-					result = ns.codingcontract.attempt(answer, file, hostname);
-
-				} else {
-					ns.print(`Failed ${type} with input ${input} and result ${answer}.`);
-				}
-			}
+			
 			ns.write("Experience.txt", JSON.stringify(experience), "w");
 		} else {
 			ns.print("failed to recall memories from Experience.txt");
@@ -108,16 +105,17 @@ async function solve(ns: NS, file: string, hostname: string) {
 	// if (solverIndex == -1) { return; }
 	// ns.exec(solvers[solverIndex], "home", 1, file, target);
 
+	return false;
 }
 
 function attempt(ns: NS, answer: any, file: string, hostname: string) {
-	var result = ns.codingcontract.attempt(answer, file, hostname)
+	var result = ns.codingcontract.attempt(answer, file, hostname);
 	if (result) {
 		ns.print(`[SUCCESS] ${result}`);
 	} else {
-		ns.print(`[WARN] Failed ${ns.codingcontract.getContractType(file, hostname)} with input ${JSON.stringify(ns.codingcontract.getData(file, hostname))} and result ${answer}.`)
+		ns.print(`[WARN] Failed ${ns.codingcontract.getContractType(file, hostname)} with input ${JSON.stringify(ns.codingcontract.getData(file, hostname))} and result ${answer}.`);
 	}
-
+	return result;
 }
 
 function getExperience(ns: NS): any {
@@ -128,7 +126,7 @@ function getExperience(ns: NS): any {
 		return readJSON;
 	}
 	catch (e) {
-		ns.print(e);
+		ns.print(`[ERROR] ${e}`);
 		return undefined;
 	}
 }

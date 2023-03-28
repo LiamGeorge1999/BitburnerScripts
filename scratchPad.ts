@@ -1,5 +1,5 @@
 //import { Util } from "Utils"
-import {Server, Player, NS} from "/NetscriptDefinitions"
+import {Server, Player, NS} from "../NetscriptDefinitions"
 /** @param {NS} ns **/
 export async function main(ns: NS) {
 	//@ts-ignore

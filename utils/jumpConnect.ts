@@ -1,8 +1,11 @@
 import { Util } from "../Utils"
-import {NS} from ".@ns"
-/** @param {NS} ns **/
-export async function main(ns: NS) {
+import {NS} from "../../NetscriptDefinitions"
 
+export function autocomplete(data: {servers: string[], txts: string[], scripts: string[], flags: string[]}, args: string[]) {
+    return [...data.servers]; // This script autocompletes the list of servers.
+}
+
+export async function main(ns: NS) {
     ns.disableLog("scan");
     //ns.tail();
     var input = ns.args[0];
@@ -12,6 +15,6 @@ export async function main(ns: NS) {
 
     if (typeof(input) == "string"){
         var util = new Util(ns);
-        util.jump(input);
+        Util.jump(ns, input);
     }
 }

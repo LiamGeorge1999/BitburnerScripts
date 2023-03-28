@@ -1,22 +1,15 @@
+import {NS} from "../../NetscriptDefinitions"
 import {Util} from "../Utils"
-import {NS} from ".@ns"
 /** @param {NS} ns **/
 export async function main(ns: NS) {
-	var util = new Util(ns);
-	var files = util.findAllFiles();
 	var count = 0;
-	var input = ns.args[0];
-	var szInput: string;
-	if (typeof(input) != "string") {
-		szInput = input.toString();
-	} else {
-		szInput = input;
+	var grep = ns.args[0];
+	if (typeof(grep) != "string") {
+		grep = grep.toString();
 	}
+	var files = Util.searchForFiles(ns, grep);
 	for (var file of files) {
-		if (ns.args[0]==undefined ||  -1 != file[1].toUpperCase().indexOf(szInput.toUpperCase())){
-		ns.tprint(file[1] + " at " + file[0]);
-		count++;
-		}
+		ns.tprint(file.fileName + " at " + file.serverPath);
 	}
 	ns.tprint(`found ${count} files${ns.args[0] == undefined ? "": " matching grep \"" + ns.args[0] + "\""}.`)
 }

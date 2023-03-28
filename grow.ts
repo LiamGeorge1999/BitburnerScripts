@@ -1,4 +1,4 @@
-import {NS} from "/NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
@@ -25,7 +25,7 @@ export async function main(ns: NS) {
 	ns.tprint(`grew ${serverName} for ${res} mult`);
 	let start = startDate.valueOf();
 	let end = endDate.valueOf();
-	ns.exec("logWriter.js", "home", 1, "stageLog.txt", 
+	ns.tryWritePort(1,
 		`${["grow.js",
 		Math.round(hackDifficulty), 
 		startDate.toLocaleTimeString(), 

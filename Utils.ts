@@ -1,4 +1,5 @@
-import {NS} from "NetscriptDefinitions"
+import { File } from "./lib/file.js";
+import {NS} from "../NetscriptDefinitions"
 /** @param {NS} ns **/
 export class Util {
 	static ns: NS;
@@ -41,13 +42,13 @@ export class Util {
 		}
 	}
 
-	jump(input: string) {
+	static jump(ns: NS, input: string) {
 		if (input.indexOf("\\") != -1){
             for (var name of input.split("\\")) {
                 Util.runTerminalCommand(`connect ${name}`);
             }
         } else {
-            var serverPaths = Util.findConnectionPaths(Util.ns.getServer().hostname);
+            var serverPaths = Util.findConnectionPaths(ns, ns.getServer().hostname);
             
             for (var serverPath of serverPaths) {
                 if (serverPath[1].toUpperCase().indexOf(input.toUpperCase()) != -1) {
@@ -86,30 +87,36 @@ export class Util {
 	 * @param {String} path?		The path of the node parent to the current node.
 	 * @returns {String[]}			An array of paths to all nodes.
 	**/
-	static findConnectionPaths(host : string = "home", serverPaths: string[][] = [], servers: string[]= [], path: string = "") {
+	static findConnectionPaths(ns: NS, host : string = "home", serverPaths: string[][] = [], servers: string[]= [], path: string = "") {
 		var newpath = path + "\\" + host;
 		//Util.ns.tprint("path: " + newpath);
 		if (!servers.includes(host)) {
 			serverPaths.push([newpath, host]);
 			servers.push(host)
-			var neighbours = Util.ns.scan(host);
+			var neighbours = ns.scan(host);
 			for (var neighbour of neighbours) {
-				serverPaths = Util.findConnectionPaths(neighbour, serverPaths, servers, newpath);
+				serverPaths = Util.findConnectionPaths(ns, neighbour, serverPaths, servers, newpath);
 			}
 		}
 		return serverPaths;
 	}
 
+	static searchForFiles(ns: NS, grep: string) {
+		ns.print(`grep: ${grep}`);
+		var files = Util.findAllFiles(ns);
+		ns.print(`[INFO] searching ${files.length} files!`);
+		return files.filter((file) => { return file.fileName.toUpperCase().includes(grep.toUpperCase()); });
+	}
+
 	/** Finds the paths and directories of all files.
 	 * @returns {String[]}			An array of paths and directories of all files.
 	**/
-	findAllFiles() {
-		var serverPaths = Util.findConnectionPaths();
-		var files: string[][] = [];
+	static findAllFiles(ns: NS): File[] {
+		var serverPaths = Util.findConnectionPaths(ns);
+		var files: File[] = [];
 		for (var serverPath of serverPaths) {
-			var serverFiles = Util.ns.ls(serverPath[1]);
-			for (var serverFile of serverFiles) {
-				files.push([serverPath[0], serverFile]);
+			for (var serverFile of ns.ls(serverPath[1])) {
+				files.push(new File(serverPath[0], serverFile));
 			}
 		}
 		return files;
@@ -131,50 +138,47 @@ export class Util {
 		return targets;
 	}
 
-	/** Runs all available port hacks on the provided target, and then nukes if possible.
-	 * @param {String} target		The target server.
-	**/
-	ownServer(target: string) {
-		target = target || Util.ns.getHostname();
+	async ownServer(ns: NS, target: string) {
 		var ports = 0;
-		if (Util.ns.fileExists("BruteSSH.exe", "home")) {
-			Util.ns.brutessh(target);
+		if (ns.fileExists("BruteSSH.exe", "home")) {
+			ns.brutessh(target);
 			ports += 1;
 		}
-		if (Util.ns.fileExists("FTPCrack.exe", "home")) {
-			Util.ns.ftpcrack(target);
+		if (ns.fileExists("FTPCrack.exe", "home")) {
+			ns.ftpcrack(target);
 			ports += 1;
 		}
-		if (Util.ns.fileExists("relaySMTP.exe", "home")) {
-			Util.ns.relaysmtp(target);
+		if (ns.fileExists("relaySMTP.exe", "home")) {
+			ns.relaysmtp(target);
 			ports += 1;
 		}
-		if (Util.ns.fileExists("HTTPWorm.exe", "home")) {
-			Util.ns.httpworm(target);
+		if (ns.fileExists("HTTPWorm.exe", "home")) {
+			ns.httpworm(target);
 			ports += 1;
 		}
-		if (Util.ns.fileExists("SQLInject.exe", "home")) {
-			Util.ns.sqlinject(target);
+		if (ns.fileExists("SQLInject.exe", "home")) {
+			ns.sqlinject(target);
 			ports += 1;
 		}
-		var requiredPorts = Util.ns.getServerNumPortsRequired(target);
+		var requiredPorts = ns.getServerNumPortsRequired(target);
 		if (requiredPorts < ports + 1) {
-			Util.ns.nuke(target);
-			//this.backdoor(target);
-			Util.ns.tprint((Util.ns.hasRootAccess(target) ? "" : "un") + "successfully owned " + target + " with " + ports + " vs " + requiredPorts + " ports.");
+			ns.nuke(target);
+			await this.backdoor(ns, target);
+			ns.tprint((ns.hasRootAccess(target) ? "" : "un") + "successfully owned " + target + " with " + ports + " vs " + requiredPorts + " ports.");
 			return true;
 		} else {
-			Util.ns.tprint(`Not enough ports open on ${target} (${ports} < ${requiredPorts})`);
+			ns.tprint(`Not enough ports open on ${target} (${ports} < ${requiredPorts})`);
 		}
 		return false;
 	}
 
-	backdoor(target: string) {
-		var host = Util.ns.getServer().hostname;
-		var util = new Util(Util.ns);
-		util.jump(target);
+	async backdoor(ns: NS, target: string) {
+		var host = ns.getServer().hostname;
+		var util = new Util(ns);
+		Util.jump(ns, target);
 		Util.runTerminalCommand("backdoor");
-		util.jump(host);
+		await ns.sleep(ns.getHackTime(target));
+		Util.jump(ns, host);
 	}
 
 	/** Formats a number. *Use ns.nFormat() instead.*
@@ -220,39 +224,39 @@ export class Util {
 	 * @param {Boolean} [clean]			Determines whether or not to run ns.killall() against the hosts.
 	 * @param {...String[]} [args]		The arguments to pass to the script.
 	**/
-	async flood(script: string, hosts: string[] = Util.ns.getPurchasedServers(), clean: boolean = false, ...args: string[]) {
+	async flood(ns: NS, script: string, hosts: string[] = Util.ns.getPurchasedServers(), clean: boolean = false, ...args: (string | number | boolean)[]) {
 		if (!Array.isArray(args)) {
-			Util.ns.print(`Arrayifying args from ${args} to ${[args]}`)
+			ns.print(`Arrayifying args from ${args} to ${[args]}`)
 			args = [args];
 		}
 		let threadTotal = 0;
-		Util.ns.print(`Flooding ${script} on [${hosts.length != 0 ? "" : hosts.join(", ")}],${clean ? "" : " not"} wiping targets, with [${args.length == 0 ? "" : args.join(", ")}] as args`)
-		for (var target of hosts) {
+		ns.print(`Flooding ${script} on [${hosts.length != 0 ? "" : hosts.join(", ")}],${clean ? "" : " not"} wiping targets, with [${args.length == 0 ? "" : args.join(", ")}] as args`)
+		for (var host of hosts) {
 			if (clean) {
-				Util.ns.print(`Killing all on ${target}`)
-				var processes = Util.ns.ps(target);
+				ns.print(`Killing all on ${host}`)
+				var processes = ns.ps(host);
 				for (var process of processes) {
-					Util.ns.print(process);
-					if (process.filename != "floodSelf.js") { Util.ns.kill(process.pid); }
+					ns.print(process);
+					if (process.filename != "floodSelf.js") { ns.kill(process.pid); }
 				}
 			}
-			Util.ns.print(`scp start`);
-			var transfer = await Util.ns.scp(script, "home", target);
-			Util.ns.print(`scp finished`);
-			if (target == "home" || transfer) {
-				Util.ns.print(`flooding ${target}`);
-				Util.ns.print(`RAM = ${Util.ns.getServerMaxRam(target)} - ${Util.ns.getServerUsedRam(target)} = ${Util.ns.getServerMaxRam(target) - Util.ns.getServerUsedRam(target)}`)
-				var threads = Math.floor((Util.ns.getServerMaxRam(target) - Util.ns.getServerUsedRam(target)) / Util.ns.getScriptRam(script, target));
+			ns.print(`scp start`);
+			var transfer = await ns.scp(script, host, "home");
+			ns.print(`scp finished`);
+			if (host == "home" || transfer) {
+				ns.print(`flooding ${host}`);
+				ns.print(`RAM = ${ns.getServerMaxRam(host)} - ${ns.getServerUsedRam(host)} = ${ns.getServerMaxRam(host) - ns.getServerUsedRam(host)}`)
+				var threads = Math.floor((ns.getServerMaxRam(host) - ns.getServerUsedRam(host)) / ns.getScriptRam(script, host));
 				if (threads > 0) {
-					Util.ns.print(`${transfer ? "" : "Un"}Successfully moved ${script} to run on ${target} with ${threads} threads and args = ["${args.join("\", \"")}"], with PID ${Util.ns.exec(script, target, threads, ...args)}`)
+					ns.print(`${transfer ? "" : "Un"}Successfully moved ${script} to run on ${host} with ${threads} threads and args = ["${args.join("\", \"")}"], with PID ${ns.exec(script, host, threads, ...args)}`)
 					threadTotal += threads;
 				} else {
-					Util.ns.print(`threadcount = 0`);
+					ns.print(`threadcount = 0`);
 				}
 			} else {
-				Util.ns.print(`failed to flood ${target}`);
+				throw new Error(`failed to scp to ${host}`);
 			}
-			await Util.ns.sleep(10);
+			await ns.sleep(10);
 		}
 		return threadTotal;
 	}

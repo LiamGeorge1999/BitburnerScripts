@@ -1,6 +1,6 @@
 /** @param {NS} ns **/
 import { Util } from "../Utils"
-import {NS} from ".@ns"
+import {NS} from "../../NetscriptDefinitions"
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {
@@ -12,7 +12,7 @@ export async function main(ns: NS) {
 		szInput = input;
 	}
 	ns.tprint("---- finding paths - search term: " + szInput + " ----");
-	var serverPaths = Util.findConnectionPaths("home", [], [], "\\");
+	var serverPaths = Util.findConnectionPaths(ns, "home", [], [], "\\");
 	ns.tprint("---- paths found = " + serverPaths.length + " ----")
 	for (var serverPath of serverPaths) {
 		if (ns.args[0] == undefined || serverPath[1].toUpperCase().indexOf(szInput.toUpperCase()) != -1) {

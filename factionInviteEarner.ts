@@ -1,7 +1,6 @@
 import {Util} from "./Utils"
-import {NS} from "./NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 
-/** @param {.NS} ns **/
 export async function main(ns: NS) {
 	var hackedAll = false;
 	var host = ns.getServer().hostname;
@@ -13,14 +12,12 @@ export async function main(ns: NS) {
 		for (let target of targets) {
 			var hackingLevel = ns.getHackingLevel();
 			//ns.print(`[INFO] targets = ${targets}`);
-			if (ns.getServerRequiredHackingLevel(target) < hackingLevel && util.ownServer(target)) {
-				ns.tprint(`=== ${target} ready for Backdoor ===`);
-				util.jump(target);
-				Util.runTerminalCommand("backdoor");
+			if (ns.getServerRequiredHackingLevel(target) < hackingLevel && await util.ownServer(ns, target)) {
+
+				//await ns.sleep(Math.ceil(ns.getHackTime(target)));
 				util.jump(host);
 				completedTargets.push(target);
 				ns.run("connect.js", 1, target, true);
-				await ns.sleep(Math.ceil(ns.getHackTime(target)));
 				Util.runTerminalCommand("home");
 			} else {
 				hackedAll = false;

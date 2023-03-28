@@ -1,0 +1,17 @@
+export enum GangMemberTask {
+	Unassigned = "Unassigned",
+	MugPeople = "Mug People",
+	DealDrugs = "Deal Drugs",
+	StrongarmCivilians = "Strongarm Civilians",
+	RunACon = "Run A Con",
+	ArmedRobbery = "Armed Robbery",
+	TraffickIllegalArms = "Traffick Illegal Arms",
+	ThreatenAndBlackmail = "Threaten & Blackmail",
+	HumanTrafficking = "Human Trafficking",
+	Terrorism = "Terrorism",
+	VigilanteJustice = "Vigilante Justice",
+	TrainCombat = "Train Combat",
+	TrainHacking = "Train Hacking",
+	TrainCharisma = "Train Charisma",
+	TerritoryWarfare = "Territory Warfare",
+}

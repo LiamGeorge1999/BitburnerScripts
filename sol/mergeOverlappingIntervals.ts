@@ -1,5 +1,6 @@
-/** @param {NS} ns **/
-export async function main(ns) {
+import { NS } from "../../NetscriptDefinitions";
+
+export async function main(ns: NS) {
 
 	var input = ns.codingcontract.getData(ns.args[0], ns.args[1]);
 	

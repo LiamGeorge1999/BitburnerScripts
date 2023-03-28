@@ -1,36 +1,39 @@
-/** @param {NS} ns **/
+import { NS } from "../../NetscriptDefinitions"
+import { Solution } from "./solutionBase";
 
-import { NS } from ".@ns"
-import { Solution } from "../sol/solutionBase.js";
-
-//incomplete
 export async function main(ns: NS) {
-	ns.print("running");
-	var inputs = [["123",6]];
-	ns.print(`initialised inputs: ${inputs}`);
-	var outputs = [["1+2+3", "1*2*3"]];
-	ns.print(`initialised outputs: ${outputs}`);
+	ns.clearLog();
+	ns.tail();
 	var solver = new ValidMathExpressions(ns, true);
-	ns.print("initialised solver");
-	var testResult = solver.test(inputs, outputs);
-	ns.print("retrieved test result");
-	ns.print(testResult);
+	var numberSet: string;
+	if (ns.args[0] && typeof(ns.args[0]) == "string") {
+		numberSet = ns.args[0];
+	} else if (ns.args[0] && typeof(ns.args[0]) == "number") {
+		numberSet = ns.args[0].toString();
+	} else {
+		return false;
+	}
+
+	var input = JSON.parse(numberSet);
+	ns.print(`using args as input: ${input}`);
+	JSON.stringify(solver.determine(input));
 }
 
 export class ValidMathExpressions extends Solution {
 
-    constructor(ns: NS, debugMode: boolean = false) {
+	constructor(ns: NS, debugMode: boolean) {
+		ValidMathExpressions.contractName = "Find All Valid Math Expressions";
 		super(ns, debugMode);
 	}
 
 	determine(input: any[]): Array<string> {
 		this.log("determining");
-		var inputString : string = input[0];
+		var inputString : string = input[0].toString();
 		var inputValue : number = input[1];
 		var candidates: Array<string> = this.generate(inputString);
-		var solutions: Array<string> = this.validate(candidates, inputValue);
+		var solutions: Array<string> = candidates.filter((candidate) => {return this.validate(candidate, inputValue)});
 		
-		this.log("solved?");
+		this.log(`solved? ${JSON.stringify(solutions)}`);
 		return solutions;
 	}
 
@@ -55,12 +58,10 @@ export class ValidMathExpressions extends Solution {
 		return candidateSets[candidateSets.length-1];
 	}
 
-	validate(candidates: Array<string>, inputValue: number): Array<string> {
-		this.log("validating");
-		var solutions: string[] = [];
-		for (var candidate of candidates) {
-			if (eval(candidate) == inputValue) solutions.push(candidate)
-		}
-		return solutions;
+	validate(candidate: string, inputValue: number): boolean {
+		this.log(`validating ${candidate}`);
+		var valid = eval(candidate) == inputValue;
+		this.log(`${valid? "pass":"fail"}: ${candidate} ${valid? "=":"!"}= ${inputValue}`);
+		return valid;
 	}
 }

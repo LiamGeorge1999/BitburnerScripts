@@ -1,5 +1,5 @@
-import { Util } from "Utils"
-import {Server, Player, NS} from "/NetscriptDefinitions"
+import { Util } from "./Utils"
+import {Server, Player, NS} from "../NetscriptDefinitions"
 
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
@@ -35,7 +35,7 @@ export function getOptimalExpGrindTarget(ns: NS) {
 	 * @param {Player} player?		The player hacking the Server.
 	 * @returns {int}			The exp gained by player from hacking server.
 	**/
-function calculateExpGain(ns: NS, server: Server, player: Player) {
+export function calculateExpGain(ns: NS, server: Server, player: Player) {
     if (player == undefined) {
         player = ns.getPlayer()
     }

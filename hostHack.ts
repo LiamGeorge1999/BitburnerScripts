@@ -1,13 +1,13 @@
 import { Util } from "./Utils"
-import {NS} from "./NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
 	var util = new Util(ns);
 	ns.disableLog("ALL");
 	while (true) {
+		var target = ns.args[0].toString() ?? util.findOptimalTarget() ?? "joesguns";
 		var hosts =  ns.getPurchasedServers().concat(ns.args[1] == undefined ? [] : ns.args[1].toString().split("|"));
 		var killall = ns.args[2].toString()=="true" ?? hosts.indexOf("home") == -1;
-		var target = ns.args[0].toString() ?? util.findOptimalTarget() ?? "joesguns";
 		var moneyThresh = ns.getServerMaxMoney(target) * 0.9;
 		var securityThresh = ns.getServerMinSecurityLevel(target) + 5;
 		//ns.tprint(`Time =  + ${localeHHMMSS()} --- weaken: ${ns.getWeakenTime(target)} grow: ${ns.getGrowTime(target)} hack: ${ns.getHackTime(target)}`);

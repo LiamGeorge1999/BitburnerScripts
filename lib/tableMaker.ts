@@ -5,8 +5,8 @@
 **/
 export class TableMaker {
 
-    static makeTable(data: string[][], hasMiddleRows = false): string {
-        let border = [['╔', '╦', '╗'], ['╠', '╬', '╣'], ['╚', '╩', '╝'], ['═', '║']];
+    static makeTable(data: string[][], hasMiddleRows = false, noBorders = false): string {
+        let border = !noBorders ? [['╔', '╦', '╗'], ['╠', '╬', '╣'], ['╚', '╩', '╝'], ['═', '║']] : [[' ', ' ', ' '],[' ', ' ', ' '],[' ', ' ', ' '],[' ', ' ']];
         // Find the widest text in each colomn
         let widths = Array();
         // Loop rows.

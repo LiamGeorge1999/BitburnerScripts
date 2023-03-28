@@ -1,5 +1,5 @@
 /** @param {NS} ns **/
-import {NS} from ".@ns"
+import {NS} from "../../NetscriptDefinitions"
 export async function main(ns: NS) {
     const args = ns.flags([["help", false]]);
     const debugMode = false;
@@ -26,7 +26,7 @@ export async function main(ns: NS) {
         if (debugMode) ns.print("attempting to retrieve details");
         try {
             if (debugMode) ns.print("getting Player");
-            player = ns.getPlayer();
+            //player = ns.getPlayer();
             const headers = ["karma"];
             if (debugMode) ns.print("getting & formatting Karma");
             const karma = Math.floor(heartbreak(ns));

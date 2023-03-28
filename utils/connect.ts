@@ -1,5 +1,5 @@
 import {Util} from "../Utils"
-import {NS} from "../NetscriptDefinitions.js"
+import {NS} from "../../NetscriptDefinitions"
 
 // export function autocomplete(data, args) {
 //     return [...data.servers];
@@ -27,6 +27,6 @@ export async function connect(ns: NS, target: string) {
 **/
 export async function getConnectString(ns: NS, server: string) {
 	let util = new Util(ns);
-    let serverPaths = Util.findConnectionPaths();
+    let serverPaths = Util.findConnectionPaths(ns);
     return "Failed to find server."
 }

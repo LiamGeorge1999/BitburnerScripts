@@ -1,4 +1,4 @@
-import {NS} from "/NetscriptDefinitions"
+import {NS} from "../NetscriptDefinitions"
 
 /** @param {.NS} ns **/
 export async function main(ns: NS) {
@@ -26,7 +26,7 @@ export async function main(ns: NS) {
 	ns.tprint(`hacked ${serverName} for $${ns.nFormat(res, "0.00a")}`);
 	let start = startDate.valueOf();
 	let end = endDate.valueOf();
-	ns.exec("logWriter.js", "home", 1, "stageLog.txt", 
+	ns.tryWritePort(1,
 		`${["hack.js",
 		Math.round(hackDifficulty), 
 		startDate.toLocaleTimeString(), 

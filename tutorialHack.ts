@@ -1,4 +1,5 @@
-import {NS} from "/NetscriptDefinitions"
+
+import {NS} from "../NetscriptDefinitions"
 /** @param {NS} ns **/
 export async function main(ns: NS) {
 
@@ -27,7 +28,6 @@ export async function main(ns: NS) {
 			await ns.hack(target);
 		}
 	}
-
 }
 /* Returns a string representing the time of day.
  * @param {number} [ms=0]	The number of milliseconds to add to the current time.

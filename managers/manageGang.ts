@@ -1,31 +1,21 @@
 import { TableMaker } from "../lib/tableMaker.js"
 import { Util } from "../Utils"
-import { GangGenInfo, GangMemberInfo, GangOtherInfo, NS } from ".@ns"
+import { GangGenInfo, GangMemberInfo, GangOtherInfo, NS } from "../../NetscriptDefinitions"
+import { GangMemberTask } from "../lib/GangMemberTask.js"
 
-const ascensionThreshhold = 1.6;
+const ascensionThreshhold = 1.25;
 const refreshRate = 100; //in ms
+const trainingThreshhold = 75;
 
 var ticksPerSec = 5;
+var moneyMade = 0;
+var lastTimestamp = new Date().getTime();
 var reduceWanted = false;
 var warfareScore = 0;
-
-enum GangMemberStatuses {
-	Unassigned = "Unassigned",
-	MugPeople = "Mug People",
-	DealDrugs = "Deal Drugs",
-	StrongarmCivilians = "Strongarm Civilians",
-	RunACon = "Run A Con",
-	ArmedRobbery = "Armed Robbery",
-	TraffickIllegalArms = "Traffick Illegal Arms",
-	ThreatenAndBlackmail = "Threaten & Blackmail",
-	HumanTrafficking = "Human Trafficking",
-	Terrorism = "Terrorism",
-	VigilanteJustice = "Vigilante Justice",
-	TrainCombat = "Train Combat",
-	TrainHacking = "Train Hacking",
-	TrainCharisma = "Train Charisma",
-	TerritoryWarfare = "Territory Warfare",
-}
+var wageWar = false;
+var preprint: string[] = [];
+var postprint: string[] = [];
+var startingMoney: number;
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {
@@ -33,10 +23,11 @@ export async function main(ns: NS) {
 	ns.disableLog("sleep");
 	ns.disableLog("gang.setMemberTask");
 	ns.disableLog("getServerMoneyAvailable");
-	var startingMoney = ns.getServerMoneyAvailable("home");
+	startingMoney = ns.getPlayer().money;
 	while (await ns.sleep(refreshRate)) {
 		ns.clearLog();
-		printStats(ns, startingMoney);
+		moneyMade += ns.gang.getGangInformation().moneyGainRate*((new Date().getTime() - lastTimestamp)/1000);
+		printStats(ns);
 		considerEquipment(ns);
 		recruitMember(ns);
 		considerAscension(ns, ns.gang.getMemberNames());
@@ -65,14 +56,14 @@ function considerEquipment(ns: NS) {
 			evaluateEquipment(ns, members, equipmentName);
 			break;
 		case "Rootkit":
+			evaluateEquipment(ns, members, equipmentName, 0.1);
 			break;
 		}
 
 	}
 }
-
-function evaluateEquipment(ns: NS, members: string[], equipmentName: string) {
-		if (ns.gang.getEquipmentCost(equipmentName)*members.length < 0.01 * ns.getPlayer().money) {
+function evaluateEquipment(ns: NS, members: string[], equipmentName: string, valueModifier: number = 1) {
+		if (ns.gang.getEquipmentCost(equipmentName)*members.length < 0.1 * ns.getPlayer().money * valueModifier || ns.gang.getEquipmentCost(equipmentName) < 10 * ns.gang.getGangInformation().moneyGainRate) {
 			for (var member of members) {
 				var memberInfo = ns.gang.getMemberInformation(member);
 				if (memberInfo.upgrades.indexOf(equipmentName) == -1 && memberInfo.augmentations.indexOf(equipmentName) == -1){
@@ -83,14 +74,14 @@ function evaluateEquipment(ns: NS, members: string[], equipmentName: string) {
 }
 
 function recruitMember(ns: NS) {
-	while (ns.gang.canRecruitMember() && ns.gang.recruitMember(`gm${ns.gang.getMemberNames().length}`)) {
-		ns.toast(`[GANG] recuited new gang member`, "success")
+	var names = ns.gang.getMemberNames();
+	var nameNumber: number = 0;
+	for (var name of names) if (parseInt(name.substring(2)) >= nameNumber) nameNumber = parseInt(name.substring(2)) + 1
+	while (ns.gang.canRecruitMember() && ns.gang.recruitMember(`gm${nameNumber}`)) {
+		ns.toast(`[GANG] recuited new gang member`, "success");
 	}
 }
 
-/** Ascends, where sensible.
- * @param {NS} ns
-**/
 function considerWarfare(ns: NS) {
     let util = new Util(ns);
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
@@ -98,16 +89,19 @@ function considerWarfare(ns: NS) {
 	var warfareScores: any = {};
 	var scores: number[] = [];
 
-	var columns = ["Gang", "Power", "War Score"]
+	var columns = ["Gang", "Territory", "Power", "War Score"];
 	var rows = [columns]
 
-	ns.print(" ");
+	if (gangInfo.territory == 1) {
+		return 0;
+	}
 
 	for (var gangName in otherGangInfos) {
-		if (gangName != "Slum Snakes") {
+		if (gangName != ns.gang.getGangInformation().faction) {
 			var score = otherGangInfos[gangName].territory * (ns.gang.getChanceToWinClash(gangName)-0.5) + 1;
 			//if (score != 1) { ns.print(`warfare score for ${gangName} - ${score}`); }
-			rows.push([gangName, ns.nFormat(ns.gang.getOtherGangInformation()[gangName].power, '0.00a'), ns.nFormat(score, '0.00a')])
+			var territory = otherGangInfos[gangName].territory;
+			if (territory) rows.push([gangName, ns.formatPercent(territory) + "", ns.formatNumber(ns.gang.getOtherGangInformation()[gangName].power), ns.formatNumber(score)])
 			scores.push(score);
 		}
 	}
@@ -116,7 +110,7 @@ function considerWarfare(ns: NS) {
 	// 	scores.push(score);
 	// }
 
-	ns.print(TableMaker.makeTable(rows));
+	postprint.push("\n" + TableMaker.makeTable(rows));
 
 	return Util.geometricMean(...scores);
 }
@@ -142,15 +136,22 @@ function getAscensionMetric(ns: NS, member: string): number {
     let util = new Util(ns);
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
 	var attributes: number[] = [];
-	if (ns.fileExists("Formulas.exe") && false) {
+	var currentAscensionPoints: number[] = [];
+	var currentAscensionMults: number[] = [];
+	if (ns.fileExists("Formulas.exe")) {
 		var memberInfo: GangMemberInfo = ns.gang.getMemberInformation(member);
 		if (gangInfo.isHacking) {
-			attributes = [memberInfo.hack_asc_points, memberInfo.cha_asc_points];
+			attributes = [memberInfo.hack_exp, memberInfo.cha_exp];
+			currentAscensionPoints = [memberInfo.hack_asc_points, memberInfo.cha_asc_points];
+			currentAscensionMults = [memberInfo.hack_asc_mult, memberInfo.cha_asc_mult];
 		} else {
-			attributes = [memberInfo.str_asc_points, memberInfo.def_asc_points, memberInfo.dex_asc_points, memberInfo.agi_asc_points, memberInfo.cha_asc_points]
+			attributes = [memberInfo.str_exp, memberInfo.def_exp, memberInfo.dex_exp, memberInfo.agi_exp, memberInfo.cha_exp];
+			currentAscensionPoints = [memberInfo.str_asc_points, memberInfo.def_asc_points, memberInfo.dex_asc_points, memberInfo.agi_asc_points, memberInfo.cha_asc_points];
+			currentAscensionMults = [memberInfo.str_asc_mult, memberInfo.def_asc_mult, memberInfo.dex_asc_mult, memberInfo.agi_asc_mult, memberInfo.cha_asc_mult];
 		}
 		for (var i in attributes) {
-			attributes[i] = ns.formulas.gang.ascensionMultiplier(attributes[i]);
+			attributes[i] = ns.formulas.gang.ascensionPointsGain(attributes[i]) + currentAscensionPoints[i];
+			attributes[i] = ns.formulas.gang.ascensionMultiplier(attributes[i]) / currentAscensionMults[i];
 		}
 	}
 	else {
@@ -159,7 +160,7 @@ function getAscensionMetric(ns: NS, member: string): number {
 			if (gangInfo.isHacking) {
 				attributes = [ascendedMemberInfo.hack, ascendedMemberInfo.cha];
 			} else {
-				attributes = [ascendedMemberInfo.str, ascendedMemberInfo.def, ascendedMemberInfo.dex, ascendedMemberInfo.agi, ascendedMemberInfo.cha]
+				attributes = [ascendedMemberInfo.str, ascendedMemberInfo.def, ascendedMemberInfo.dex, ascendedMemberInfo.agi, ascendedMemberInfo.cha];
 			}
 		}
 	}
@@ -174,14 +175,14 @@ function considerReduceWanted(ns: NS) {
 	if ((1 - gangInfo.wantedPenalty) * 100 > 10 && gangInfo.wantedLevel > 2) {
 		reduceWanted = true;
 	}
-	else if (gangInfo.wantedLevel == 1) {
+	if ((1 - gangInfo.wantedPenalty) * 100 <= 1.5 || gangInfo.wantedLevel < 1.5) {
 		reduceWanted = false;
 	}
 
 	if (reduceWanted) {
 		let members: string[] = ns.gang.getMemberNames();
 		for (var member of members) {
-			ns.gang.setMemberTask(member, GangMemberStatuses.VigilanteJustice);
+			ns.gang.setMemberTask(member, GangMemberTask.VigilanteJustice);
 		}
 	}
 }
@@ -195,12 +196,16 @@ function workMembers(ns: NS, overrideTasks = true) {
 	let members: string[] = ns.gang.getMemberNames();
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
 	if (!overrideTasks) members = members.filter((member: any) => {
-		return ns.gang.getMemberInformation(member).task == GangMemberStatuses.Unassigned;
+		return ns.gang.getMemberInformation(member).task == GangMemberTask.Unassigned;
 	});
 	var idleMembers: string[] = [];
 	for (var member of members) {
 		gangInfo = ns.gang.getGangInformation();
-		if (ns.fileExists("Formulas.exe")) {
+		if (wageWar) {
+			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
+		} else if (ns.getPlayer().money > (10^20)) {
+			ns.gang.setMemberTask(member, GangMemberTask.Terrorism);
+		} else if (ns.fileExists("Formulas.exe")) {
 			for (var task of ns.gang.getTaskNames()) {
 				var memberInfo: GangMemberInfo = ns.gang.getMemberInformation(member);
 				var currentTaskStats = ns.gang.getTaskStats(memberInfo.task);
@@ -209,10 +214,11 @@ function workMembers(ns: NS, overrideTasks = true) {
 				}
 			}
 		} else {
-			ns.gang.setMemberTask(member, GangMemberStatuses.StrongarmCivilians);
+			postprint.push(`Defaulted ${member} to ${GangMemberTask.ArmedRobbery}.`);
+			ns.gang.setMemberTask(member, GangMemberTask.ArmedRobbery);
 		}
-		if (ns.gang.getMemberInformation(member).task == GangMemberStatuses.Unassigned) {
-			idleMembers.push(member);
+		if (warfareScore > 1.1) {
+			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
 		}
 	}
 
@@ -226,21 +232,21 @@ function trainMembers(ns: NS, overrideTasks = true) {
 	let members: string[] = ns.gang.getMemberNames();
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
 	if (!overrideTasks) members = members.filter((member: any) => {
-		return ns.gang.getMemberInformation(member).task == GangMemberStatuses.Unassigned;
+		return ns.gang.getMemberInformation(member).task == GangMemberTask.Unassigned;
 	});
 	for (var member of members) {
 		var memberInformation = ns.gang.getMemberInformation(member);
 		if (!gangInfo.isHacking) {
 			//ns.print(`${member}: 70*fullmult: ${70 * memberInformation.agi_asc_mult * memberInformation.agi_mult}, ascMult: ${memberInformation.agi_asc_mult}, mult: ${memberInformation.agi_mult}`)
-			if (memberInformation.cha / (memberInformation.cha_asc_mult * memberInformation.cha_mult) < 50) {
-				ns.gang.setMemberTask(member, GangMemberStatuses.TrainCharisma);
+			if (memberInformation.cha / (memberInformation.cha_asc_mult * memberInformation.cha_mult) < trainingThreshhold) {
+				ns.gang.setMemberTask(member, GangMemberTask.TrainCharisma);
 			}
-			if (memberInformation.agi / (memberInformation.agi_asc_mult * memberInformation.agi_mult) < 50) {
-				ns.gang.setMemberTask(member, GangMemberStatuses.TrainCombat);
+			if (memberInformation.agi / (memberInformation.agi_asc_mult * memberInformation.agi_mult) < trainingThreshhold) {
+				ns.gang.setMemberTask(member, GangMemberTask.TrainCombat);
 			}
 		} else {
-			if (memberInformation.hack / (memberInformation.hack_asc_mult * memberInformation.hack_mult) < 50) {
-				ns.gang.setMemberTask(member, GangMemberStatuses.TrainHacking);
+			if (memberInformation.hack / (memberInformation.hack_asc_mult * memberInformation.hack_mult) < trainingThreshhold) {
+				ns.gang.setMemberTask(member, GangMemberTask.TrainHacking);
 			}
 		}
 	}
@@ -250,22 +256,26 @@ function trainMembers(ns: NS, overrideTasks = true) {
  * @param {NS} ns
  * @param {number} startingMoney money held on script start
 **/
-function printStats(ns: NS, startingMoney: number) {
+function printStats(ns: NS) {
 	let members: string[] = ns.gang.getMemberNames();
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
-	ns.print(`money gained: $${ns.nFormat(ns.getServerMoneyAvailable("home") - startingMoney, "0.000a")} @ $${ns.nFormat(gangInfo.moneyGainRate*ticksPerSec, "0.000a")}/s`);
-	ns.print(`wanted level:  ${ns.nFormat(gangInfo.wantedLevel, "0.0a")} ${reduceWanted ? "(reducing)" : ""} @ ${ns.nFormat(gangInfo.wantedLevelGainRate*ticksPerSec, "0.00a")}/s`);
-	ns.print(`wanted penalty percentage: -${ns.nFormat((1 - gangInfo.wantedPenalty) * 100, "0.0a")}%`);
-	ns.print(`Respect: ${ns.nFormat(gangInfo.respect, "0.000a")} @ ${ns.nFormat(gangInfo.respectGainRate, "0.000a")}/s`)
-	ns.print(`power: ${ns.nFormat(gangInfo.power, "0.0a")}`);
-	ns.print(`warfare score: ${ns.nFormat(warfareScore, "0.00a")}`);
-	ns.print(`${localeHHMMSS()} - bonus time: ${ns.nFormat(ns.gang.getBonusTime()/1000, "00:00:00")}`);
+	preprint.push(`money gained: $${ns.formatNumber(ns.getPlayer().money - startingMoney)} @ $${ns.formatNumber(gangInfo.moneyGainRate*ticksPerSec)}/s`);
+	preprint.push(`wanted level:  ${ns.formatNumber(gangInfo.wantedLevel)} ${reduceWanted ? "(reducing)" : ""} @ ${ns.formatNumber(gangInfo.wantedLevelGainRate*ticksPerSec)}/s`);
+	preprint.push(`wanted penalty percentage: -${ns.formatNumber((1 - gangInfo.wantedPenalty))}%`);
+	preprint.push(`Respect: ${ns.formatNumber(gangInfo.respect)} @ ${ns.formatNumber(gangInfo.respectGainRate)}/s`)
+	preprint.push(`power: ${ns.formatNumber(gangInfo.power)}`);
+	preprint.push(`warfare score: ${ns.formatNumber(warfareScore)}`);
+	preprint.push(`${localeHHMMSS()} - bonus time: ${ns.tFormat(ns.gang.getBonusTime()/1000)}`);
+	preprint.push(`Threshholds: Ascension: ${ascensionThreshhold} - Training: ${trainingThreshhold}`);
 
 	//TODO: Print price of all combat/hacking augs/rootkits per member
 
 	//livePrint.push(`Full aug price per member: ${}`);
-
+	ns.print(preprint.join("\n"));
 	ns.print(getMemberTable(ns));
+	ns.print(postprint.join("\n"));
+	preprint = [];
+	postprint = [];
 }
 
 
@@ -275,29 +285,38 @@ function printStats(ns: NS, startingMoney: number) {
 function getMemberTable(ns: NS): string {
 	let members: string[] = ns.gang.getMemberNames();
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
-	var printTable: any[][] = [gangInfo.isHacking ? ["Member", "Task", "LMult", "AscMet", "Res", "Hack", "Cha"] : ["Member", "Task", "LMult", "AscMet", "Res", "Str", "Def", "Dex", "Agi", "Cha"]];
+	var printTable: any[][] = [gangInfo.isHacking ? ["Member", "Task", "AscMet", "Mult", "Rspct", "Hack", "Cha"] : ["Member", "Task", "AscMet", "Mult", "Rspct", "Str", "Def", "Dex", "Agi", "Cha"]];
 	
 	for (var member of members) {
 		var ascensionMetric = getAscensionMetric(ns, member);
 		var memberInfo = ns.gang.getMemberInformation(member);
-		var memberMults = gangInfo.isHacking ? [memberInfo.hack_mult, memberInfo.cha_mult] : [memberInfo.agi_mult, memberInfo.str_mult, memberInfo.def_mult, memberInfo.dex_mult, memberInfo.cha_mult];
+		var memberMults = gangInfo.isHacking ? [memberInfo.hack_mult * memberInfo.hack_asc_mult, 
+													memberInfo.cha_mult * memberInfo.cha_asc_mult] 
+												: 
+												[memberInfo.agi_mult * memberInfo.agi_asc_mult, 
+													memberInfo.str_mult * memberInfo.str_asc_mult, 
+													memberInfo.def_mult * memberInfo.def_asc_mult, 
+													memberInfo.dex_mult * memberInfo.dex_asc_mult, 
+													memberInfo.cha_mult * memberInfo.cha_asc_mult];
 		printTable.push(gangInfo.isHacking ? 
 							[member, 
-								memberInfo.task.slice(Math.max(0, memberInfo.task.indexOf(' '))), 
-								ascensionMetric ? ascensionMetric.toPrecision(3) : "null",
-								Util.geometricMean(memberMults),
-								memberInfo.earnedRespect ? memberInfo.earnedRespect.toPrecision(3) : "0", 
-								memberInfo.hack, memberInfo.cha] 
+								memberInfo.task, 
+								ascensionMetric && !Number.isNaN(ascensionMetric) ? ascensionMetric.toPrecision(3) : "null",
+								ns.formatNumber(Util.geometricMean(...memberMults)),
+								memberInfo.earnedRespect ? ns.formatNumber(memberInfo.earnedRespect) : "0", 
+								ns.formatNumber(memberInfo.hack), 
+								ns.formatNumber(memberInfo.cha)
+							] 
 							: [member, 
 								memberInfo.task, 
 								ascensionMetric ? ascensionMetric.toPrecision(3) : "null",
-								Util.geometricMean(memberMults),
-								memberInfo.earnedRespect ? memberInfo.earnedRespect.toPrecision(3) : "0", 
-								memberInfo.str, 
-								memberInfo.def, 
-								memberInfo.dex, 
-								memberInfo.agi, 
-								memberInfo.cha
+								ns.formatNumber(Util.geometricMean(...memberMults)),
+								memberInfo.earnedRespect ? ns.formatNumber(memberInfo.earnedRespect) : "0", 
+								ns.formatNumber(memberInfo.str), 
+								ns.formatNumber(memberInfo.def), 
+								ns.formatNumber(memberInfo.dex), 
+								ns.formatNumber(memberInfo.agi), 
+								ns.formatNumber(memberInfo.cha)
 							]);
 	}
 	return TableMaker.makeTable(printTable);
