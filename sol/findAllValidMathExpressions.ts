@@ -1,5 +1,6 @@
 import { NS } from "../../NetscriptDefinitions"
 import { Solution } from "./solutionBase";
+import { ExpressionEvaluator } from "../lib/expressionEvaluator.js";
 
 export async function main(ns: NS) {
 	ns.clearLog();
@@ -16,7 +17,7 @@ export async function main(ns: NS) {
 
 	var input = JSON.parse(numberSet);
 	ns.print(`using args as input: ${input}`);
-	JSON.stringify(solver.determine(input));
+	JSON.stringify(solver.determine(ns, input));
 }
 
 export class ValidMathExpressions extends Solution {
@@ -26,7 +27,7 @@ export class ValidMathExpressions extends Solution {
 		super(ns, debugMode);
 	}
 
-	determine(input: any[]): Array<string> {
+	determine(ns: NS, input: any[]): Array<string> {
 		this.log("determining");
 		var inputString : string = input[0].toString();
 		var inputValue : number = input[1];
@@ -60,8 +61,9 @@ export class ValidMathExpressions extends Solution {
 
 	validate(candidate: string, inputValue: number): boolean {
 		this.log(`validating ${candidate}`);
-		var valid = eval(candidate) == inputValue;
+		var valid = ExpressionEvaluator.evaluate(candidate) == inputValue;
 		this.log(`${valid? "pass":"fail"}: ${candidate} ${valid? "=":"!"}= ${inputValue}`);
 		return valid;
 	}
+
 }

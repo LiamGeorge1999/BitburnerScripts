@@ -31,23 +31,29 @@ export async function main(ns: NS) {
             var stats = ns.hacknet.getNodeStats(hacknetServerIndex);
             var canAffordAll: boolean = true;
 
-            canAffordAll = (ns.hacknet.getRamUpgradeCost(hacknetServerIndex, 1) < ns.getPlayer().money || stats.ram == 8192)
+            canAffordAll = true ||(ns.hacknet.getRamUpgradeCost(hacknetServerIndex, 1) < ns.getPlayer().money || stats.ram == 8192)
                         && (ns.hacknet.getLevelUpgradeCost(hacknetServerIndex, 1) < ns.getPlayer().money || stats.level == 300)
                         && (ns.hacknet.getCoreUpgradeCost(hacknetServerIndex, 1) < ns.getPlayer().money || stats.cores == 128);
             
-            if (canAffordAll && !(stats.ram>8*(1024)) && (ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram*2, stats.cores)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getRamUpgradeCost(hacknetServerIndex, 1) > bestUpgradeHashRatePerDollar) {
+            var ramHashPerDollar = (ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram*2, stats.cores)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getRamUpgradeCost(hacknetServerIndex, 1);
+            var levelHashPerDollar = (ns.formulas.hacknetServers.hashGainRate(stats.level+1, 0, stats.ram, stats.cores)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getLevelUpgradeCost(hacknetServerIndex, 1);
+            var coreHashPerDollar = (ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores+1)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getCoreUpgradeCost(hacknetServerIndex, 1);
+            if (canAffordAll && !(stats.ram>8*(1024)) && ramHashPerDollar > bestUpgradeHashRatePerDollar) {
                 bestUpgradeServerIndex = hacknetServerIndex;
                 bestUpgradeType = "RAM";
+                bestUpgradeHashRatePerDollar = ramHashPerDollar;
             }
 
-            if (canAffordAll && !(stats.level == 300) && (ns.formulas.hacknetServers.hashGainRate(stats.level+1, 0, stats.ram, stats.cores)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getLevelUpgradeCost(hacknetServerIndex, 1) > bestUpgradeHashRatePerDollar) {
+            if (canAffordAll && !(stats.level == 300) && levelHashPerDollar > bestUpgradeHashRatePerDollar) {
                 bestUpgradeServerIndex = hacknetServerIndex;
                 bestUpgradeType = "LEVEL";
+                bestUpgradeHashRatePerDollar = levelHashPerDollar;
             }
 
-            if (canAffordAll && !(stats.cores == 128) && (ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores+1)-ns.formulas.hacknetServers.hashGainRate(stats.level, 0, stats.ram, stats.cores)) / ns.hacknet.getCoreUpgradeCost(hacknetServerIndex, 1) > bestUpgradeHashRatePerDollar) {
+            if (canAffordAll && !(stats.cores == 128) && coreHashPerDollar > bestUpgradeHashRatePerDollar) {
                 bestUpgradeServerIndex = hacknetServerIndex;
                 bestUpgradeType = "CORE";
+                bestUpgradeHashRatePerDollar = coreHashPerDollar;
             }
             var levelSuffix: string = "";
             var ramSuffix: string = "";

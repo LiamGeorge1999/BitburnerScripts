@@ -7,15 +7,22 @@ var historyLength: number = 0;
 var memoryCapacity = 20;
 
 export async function main(ns: NS) {
-    while(await ns.sleep(100)) {
+    while (await ns.sleep(100)) {
         recordHistory(ns);
         for (var stock of ns.stock.getSymbols()) {
-            if (getRecentPriceAverage(stock) != -1) {
-                //do stocks
-            }
+            manageStock(ns, stock);
         }
     }
     
+}
+
+function manageStock(ns: NS, stock: string) {
+    if (getRecentPriceAverage(stock) != -1) {
+        var position = ns.stock.getPosition(stock);
+        if (ns.stock.getAskPrice(stock) < getRecentPriceAverage(stock) && position[0]) {
+            
+        }
+    }
 }
 
 

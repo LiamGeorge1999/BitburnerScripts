@@ -2,6 +2,7 @@ import { TableMaker } from "../lib/tableMaker.js"
 import { Util } from "../Utils"
 import { GangGenInfo, GangMemberInfo, GangOtherInfo, NS } from "../../NetscriptDefinitions"
 import { GangMemberTask } from "../lib/GangMemberTask.js"
+import { getKarma } from "@/lib/karma.js"
 
 const ascensionThreshhold = 1.25;
 const refreshRate = 100; //in ms
@@ -13,6 +14,7 @@ var lastTimestamp = new Date().getTime();
 var reduceWanted = false;
 var warfareScore = 0;
 var wageWar = false;
+var bolsterRespect = false;
 var preprint: string[] = [];
 var postprint: string[] = [];
 var startingMoney: number;
@@ -24,6 +26,7 @@ export async function main(ns: NS) {
 	ns.disableLog("gang.setMemberTask");
 	ns.disableLog("getServerMoneyAvailable");
 	startingMoney = ns.getPlayer().money;
+	if (!ns.gang.inGang()) while (!ns.gang.createGang("Slum Snakes")) {ns.print(`Failed to create gang, only ${ns.formatNumber(getKarma(ns))} karma`);};
 	while (await ns.sleep(refreshRate)) {
 		ns.clearLog();
 		moneyMade += ns.gang.getGangInformation().moneyGainRate*((new Date().getTime() - lastTimestamp)/1000);
@@ -53,7 +56,8 @@ function considerEquipment(ns: NS) {
 			evaluateEquipment(ns, members, equipmentName);
 			break;
 		case "Augmentation":
-			evaluateEquipment(ns, members, equipmentName);
+			if (ns.gang.getEquipmentStats(equipmentName).hack) evaluateEquipment(ns, members, equipmentName, 0.1);
+			else evaluateEquipment(ns, members, equipmentName, 10);
 			break;
 		case "Rootkit":
 			evaluateEquipment(ns, members, equipmentName, 0.1);
@@ -63,14 +67,17 @@ function considerEquipment(ns: NS) {
 	}
 }
 function evaluateEquipment(ns: NS, members: string[], equipmentName: string, valueModifier: number = 1) {
-		if (ns.gang.getEquipmentCost(equipmentName)*members.length < 0.1 * ns.getPlayer().money * valueModifier || ns.gang.getEquipmentCost(equipmentName) < 10 * ns.gang.getGangInformation().moneyGainRate) {
-			for (var member of members) {
-				var memberInfo = ns.gang.getMemberInformation(member);
-				if (memberInfo.upgrades.indexOf(equipmentName) == -1 && memberInfo.augmentations.indexOf(equipmentName) == -1){
-					ns.gang.purchaseEquipment(member, equipmentName);
+	var membersWithout = members.filter((member) => { return !ns.gang.getMemberInformation(member).augmentations.includes(equipmentName)})
+	for (var member of membersWithout) {
+		if (ns.gang.getEquipmentCost(equipmentName) < 0.1 * ns.getPlayer().money * valueModifier || ns.gang.getEquipmentCost(equipmentName) < 10 * ns.gang.getGangInformation().moneyGainRate) {
+			var memberInfo = ns.gang.getMemberInformation(member);
+			if (memberInfo.upgrades.indexOf(equipmentName) == -1 && memberInfo.augmentations.indexOf(equipmentName) == -1){
+				if (ns.gang.purchaseEquipment(member, equipmentName)) { 
+					//ns.toast(`purchased ${equipmentName} for ${member}.`);
 				}
 			}
 		}
+	}
 }
 
 function recruitMember(ns: NS) {
@@ -164,7 +171,7 @@ function getAscensionMetric(ns: NS, member: string): number {
 			}
 		}
 	}
-	return Util.geometricMean(...attributes);
+	return ns.gang.getMemberInformation(member).task == "Train Charisma" ? attributes[4] : Util.geometricMean(...attributes);
 }
 
 /** Determines whether or not to reduce the wanted level of the gang.
@@ -177,13 +184,6 @@ function considerReduceWanted(ns: NS) {
 	}
 	if ((1 - gangInfo.wantedPenalty) * 100 <= 1.5 || gangInfo.wantedLevel < 1.5) {
 		reduceWanted = false;
-	}
-
-	if (reduceWanted) {
-		let members: string[] = ns.gang.getMemberNames();
-		for (var member of members) {
-			ns.gang.setMemberTask(member, GangMemberTask.VigilanteJustice);
-		}
 	}
 }
 
@@ -201,10 +201,13 @@ function workMembers(ns: NS, overrideTasks = true) {
 	var idleMembers: string[] = [];
 	for (var member of members) {
 		gangInfo = ns.gang.getGangInformation();
-		if (wageWar) {
-			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
-		} else if (ns.getPlayer().money > (10^20)) {
+		if (gangInfo.respect < 100000 || bolsterRespect) {
 			ns.gang.setMemberTask(member, GangMemberTask.Terrorism);
+		} else if (wageWar) {
+			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
+
+		} else if (reduceWanted) {
+			ns.gang.setMemberTask(member, GangMemberTask.VigilanteJustice);
 		} else if (ns.fileExists("Formulas.exe")) {
 			for (var task of ns.gang.getTaskNames()) {
 				var memberInfo: GangMemberInfo = ns.gang.getMemberInformation(member);
@@ -265,7 +268,7 @@ function printStats(ns: NS) {
 	preprint.push(`Respect: ${ns.formatNumber(gangInfo.respect)} @ ${ns.formatNumber(gangInfo.respectGainRate)}/s`)
 	preprint.push(`power: ${ns.formatNumber(gangInfo.power)}`);
 	preprint.push(`warfare score: ${ns.formatNumber(warfareScore)}`);
-	preprint.push(`${localeHHMMSS()} - bonus time: ${ns.tFormat(ns.gang.getBonusTime()/1000)}`);
+	preprint.push(`${localeHHMMSS()} - bonus time: ${ns.tFormat(ns.gang.getBonusTime())}`);
 	preprint.push(`Threshholds: Ascension: ${ascensionThreshhold} - Training: ${trainingThreshhold}`);
 
 	//TODO: Print price of all combat/hacking augs/rootkits per member
