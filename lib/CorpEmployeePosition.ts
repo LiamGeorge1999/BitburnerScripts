@@ -5,7 +5,7 @@ export enum CorpEmployeePosition {
     Business = "Business",
     Management = "Management",
     ResearchAndDevelopment = "Research & Development",
-    Training = "Training"
+    Intern = "Intern"
 }
 
 export const WorkingEmployeePositions = [CorpEmployeePosition.Operations,
@@ -13,4 +13,4 @@ export const WorkingEmployeePositions = [CorpEmployeePosition.Operations,
                                         CorpEmployeePosition.Business,
                                         CorpEmployeePosition.Management,
                                         CorpEmployeePosition.ResearchAndDevelopment,
-                                        CorpEmployeePosition.Training];
+                                        CorpEmployeePosition.Intern];

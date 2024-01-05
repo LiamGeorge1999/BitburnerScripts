@@ -6,7 +6,7 @@ import { CorpUnlock } from "../lib/CorpUnlock.js"
 import { CorpUpgrade } from "../lib/CorpUpgrade.js"
 import { CorpMaterial } from "../lib/CorpMaterial.js"
 import { CorpEmployeePosition, WorkingEmployeePositions } from "../lib/CorpEmployeePosition.js"
-import {CorpIndustryName, CorporationInfo, Division, JobName, Material, NS, Office, CorpUpgradeName} from "../../NetscriptDefinitions"
+import {CorpIndustryName, CorporationInfo, Division, JobName, Material, NS, Office, CorpUpgradeName, Product} from "../../NetscriptDefinitions"
 
 var corpName: string = "Babbage Corp";
 var corpo: CorporationInfo;
@@ -29,7 +29,6 @@ var tobaccoProductPriceJoltFactor: number;
 
 var employeeAllocations: { [division: string]: { [city: string]: { [position: string]: number } } } = {};
 
-var simulationSpeed = 0.1;
 
 var preprint: string[] = [];
 var postprint: string[] = [];
@@ -53,7 +52,9 @@ const cities: Array<CityName> = [CityName.Aevum,
                                 CityName.Volhaven];
 
 var stage: CorporationStage = CorporationStage.EarlyAgri;
-
+var maxPriceMults: Map<string, number> = new Map<string, number>([]);
+var minPriceMults: Map<string, number> = new Map<string, number>([]);
+var maxPriceResetTimers: Map<string, number> = new Map<string, number>([]);
 
 export async function main(ns: NS) {
     ns.clearLog();
@@ -63,8 +64,8 @@ export async function main(ns: NS) {
     if (!corpo.divisions.includes(agricultureDivisionName)) await attemptToCreateDivision(ns, "Agriculture", agricultureDivisionName);
     corpName = corpo.name;
     while (corpo && await ns.sleep(10)) {
-        while (corpo.state == "EXPORT" && await ns.sleep(10)) await manageCorp(ns);
-        while (corpo.state != "EXPORT" && await ns.sleep(10)) await manageCorp(ns);
+        while (corpo.nextState == "START" && await ns.sleep(10)) await manageCorp(ns);
+        while (corpo.nextState != "START" && await ns.sleep(10)) await manageCorp(ns);
         oncePerTick(ns);
         // if (agricultureDivision) await assignEmployeeJobs(ns, agricultureDivision);
         // if (tobaccoDivision) await assignEmployeeJobs(ns, tobaccoDivision);
@@ -74,42 +75,25 @@ export async function main(ns: NS) {
 
 function oncePerTick(ns: NS) {
     allocateEmployeeJobs(ns);
+    if (tobaccoDivision) { managePrices(ns)};
 }
-
-function allocateEmployeeJobs(ns: NS) {
-    for (let division in employeeAllocations) {
-        for (var city in employeeAllocations[division]) {
-            for (var position in employeeAllocations[division][city]) {
-                var currentEmployeesInPosition = ns.corporation.getOffice(division, city as CityName).employeeJobs[position as CorpEmployeePosition];
-                if (currentEmployeesInPosition && currentEmployeesInPosition != employeeAllocations[division][city][position]) {
-                    for (var position2 in employeeAllocations[division][city]) ns.corporation.setAutoJobAssignment(division, city as CityName, position2, 0);
-                    for (var position2 in employeeAllocations[division][city]) ns.corporation.setAutoJobAssignment(division, city as CityName, position2, employeeAllocations[division][city][position2]);
-                    
-                }
-            }
-        }
-    }
-}
-
 async function manageCorp(ns: NS) {
-    corpo = ns.corporation.getCorporation();
-    if (corpo.divisions.includes(agricultureDivisionName)) agricultureDivision = ns.corporation.getDivision(agricultureDivisionName);
-    if (corpo.divisions.includes(tobaccoDivisionName)) tobaccoDivision = ns.corporation.getDivision(tobaccoDivisionName);
+    setCorporation(ns);
+    setDivisions(ns);
     determineStage(ns);
-    if (ns.corporation.getBonusTime()>10000) {
-        simulationSpeed = 1;
-    }
-    else {
-        simulationSpeed = 0.1
-    }
-
     await manageOffices(ns);
-
     if (agricultureDivision) await manageAgricultureDivision(ns);
     if (tobaccoDivision) manageTobaccoDivision(ns);
-
     printCorpo(ns);
+}
 
+function setCorporation(ns: NS) {
+    corpo = ns.corporation.getCorporation();
+}
+
+function setDivisions(ns: NS) {
+    if (corpo.divisions.includes(agricultureDivisionName)) agricultureDivision = ns.corporation.getDivision(agricultureDivisionName);
+    if (corpo.divisions.includes(tobaccoDivisionName)) tobaccoDivision = ns.corporation.getDivision(tobaccoDivisionName);
 }
 
 function determineStage(ns: NS) {
@@ -134,28 +118,39 @@ function determineStage(ns: NS) {
         levelUpgrade(ns, CorpUpgrade.FocusWires, 2);
         if (ns.corporation.getHireAdVertCount(agricultureDivision.name) < 1) ns.corporation.hireAdVert(agricultureDivision.name);
         for (var city of cities) {
-            employeeAllocation[city] = createEmployeeAllocation(1, 1, 1, 0, 0, 0, 0);
+            var officeSize = ns.corporation.getOffice(agricultureDivision.name, city).size;
+            employeeAllocation[city] = createEmployeeAllocation(1, 1, 1, 0, officeSize-3, 0, 0);
             while (ns.corporation.getWarehouse(agricultureDivision.name, city).size < 300) ns.corporation.upgradeWarehouse(agricultureDivision.name, city);
             buyToAmount(ns, agricultureDivision, city, CorpMaterial.Hardware, 125);
             buyToAmount(ns, agricultureDivision, city, CorpMaterial.AICores, 75);
             buyToAmount(ns, agricultureDivision, city, CorpMaterial.RealEstate, 27000);
         }
-        if (ns.corporation.getInvestmentOffer().funds + corpo.funds > 210000000000) {
+        if (ns.corporation.getInvestmentOffer().funds + corpo.funds > 210 * (1000^3)) {
             ns.corporation.acceptInvestmentOffer();
         }
     } else if (stage == CorporationStage.MidAgri) {
         levelUpgrade(ns, CorpUpgrade.SmartFactories, 10);
         levelUpgrade(ns, CorpUpgrade.SmartStorage, 10);
         for (var city of cities) {
-            employeeAllocation[city] = createEmployeeAllocation(3, 2, 2, 2, 0, 0, 0);
-            while (ns.corporation.getOffice(agricultureDivision.name, city).size < 9) {
+            var officeSize = ns.corporation.getOffice(agricultureDivision.name, city).size;
+            while (officeSize < 9) {
                 ns.corporation.upgradeOfficeSize( agricultureDivision.name, city, 3);
+                officeSize = ns.corporation.getOffice(agricultureDivision.name, city).size;
             }
-            while (ns.corporation.getWarehouse(agricultureDivision.name, city).size < 2000) ns.corporation.upgradeWarehouse(agricultureDivision.name, city);
-            buyToAmount(ns, agricultureDivision, city, CorpMaterial.Hardware, 2800);
-            buyToAmount(ns, agricultureDivision, city, CorpMaterial.Robots, 96);
-            buyToAmount(ns, agricultureDivision, city, CorpMaterial.AICores, 2520);
-            buyToAmount(ns, agricultureDivision, city, CorpMaterial.RealEstate, 146400);
+            if (officeSize >= 9) {
+                employeeAllocation[city] = city == CityName.Aevum ? createEmployeeAllocation(0, 0, 0, 0, officeSize, 0, 0) : createEmployeeAllocation(3, 2, 2, 2, 0, 0, 0);
+            }
+            var warehouseSize = ns.corporation.getWarehouse(agricultureDivision.name, city).size;
+            while (warehouseSize < 2000) {
+                ns.corporation.upgradeWarehouse(agricultureDivision.name, city);
+                warehouseSize = ns.corporation.getWarehouse(agricultureDivision.name, city).size;
+            }
+            if (warehouseSize >= 2000) {
+                buyToAmount(ns, agricultureDivision, city, CorpMaterial.Hardware, 2800);
+                buyToAmount(ns, agricultureDivision, city, CorpMaterial.Robots, 96);
+                buyToAmount(ns, agricultureDivision, city, CorpMaterial.AICores, 2520);
+                buyToAmount(ns, agricultureDivision, city, CorpMaterial.RealEstate, 146400);
+            }
         }
         if (ns.corporation.getInvestmentOffer().funds + corpo.funds > 5000000000000) {
             ns.corporation.acceptInvestmentOffer();
@@ -182,18 +177,18 @@ function manageTobaccoDivision(ns: NS) {
     levelUpgrade(ns, CorpUpgrade.FocusWires, 20);
     levelUpgrade(ns, CorpUpgrade.DreamSense, 30);
 
-    if (!ns.corporation.hasResearched(tobaccoDivision.name, "Hi-Tech R&D Laboratory") && tobaccoDivision.research > 5000) ns.corporation.research(tobaccoDivision.name, "Hi-Tech R&D Laboratory");
+    if (!ns.corporation.hasResearched(tobaccoDivision.name, "Hi-Tech R&D Laboratory") && tobaccoDivision.researchPoints > 5000) ns.corporation.research(tobaccoDivision.name, "Hi-Tech R&D Laboratory");
 
     var employeeAllocation: { [city: string]: { [position: string]: number } } = {};
     for (var city of cities) {
         if (city == CityName.Aevum) {
-            var employeeCount = ns.corporation.getOffice(tobaccoDivision.name, city).employees;
+            var employeeCount = ns.corporation.getOffice(tobaccoDivision.name, city).numEmployees;
             var shareSize = Math.floor(employeeCount/7)
             if (employeeCount > 4) employeeAllocation[city] = createEmployeeAllocation(2*shareSize, 2*shareSize, shareSize, 2*shareSize, (employeeCount-7*shareSize));
             else createEmployeeAllocation();
         }
         else {
-            var employeeCount = ns.corporation.getOffice(tobaccoDivision.name, city).employees;
+            var employeeCount = ns.corporation.getOffice(tobaccoDivision.name, city).numEmployees;
             if (employeeCount > 4) employeeAllocation[city] = createEmployeeAllocation(1, 1, 1, 1, (employeeCount-4), 0, 0);
             else createEmployeeAllocation();
         }
@@ -203,14 +198,21 @@ function manageTobaccoDivision(ns: NS) {
         return
     }
     manageProducts(ns, tobaccoDivision);
-    if (ns.corporation.getUpgradeLevelCost(CorpUpgrade.WilsonAnalytics) < 10 * corpo.funds) return !(ns.corporation.getUpgradeLevelCost(CorpUpgrade.WilsonAnalytics) < corpo.funds) || ns.corporation.levelUpgrade(CorpUpgrade.WilsonAnalytics);
-    if (ns.corporation.getHireAdVertCost(tobaccoDivision.name) < corpo.funds) return ns.corporation.hireAdVert(tobaccoDivision.name);
-    if (ns.corporation.getOfficeSizeUpgradeCost(tobaccoDivision.name, CityName.Aevum, 15) < corpo.funds) return ns.corporation.upgradeOfficeSize(tobaccoDivision.name, CityName.Aevum, 15);
-    for (var city of cities.filter((city) => { return city != CityName.Aevum 
-                                                    && ns.corporation.getOffice(tobaccoDivision.name, city).size + 60 < ns.corporation.getOffice(tobaccoDivision.name, CityName.Aevum).size})) {
-        return ns.corporation.upgradeOfficeSize(tobaccoDivision.name, city, 15);
-    }
     buyUpgrades(ns);
+}
+
+function allocateEmployeeJobs(ns: NS) {
+    for (let division in employeeAllocations) {
+        for (var city in employeeAllocations[division]) {
+            for (var position in employeeAllocations[division][city]) {
+                var currentEmployeesInPosition = ns.corporation.getOffice(division, city as CityName).employeeJobs[position as CorpEmployeePosition];
+                if (currentEmployeesInPosition && currentEmployeesInPosition != employeeAllocations[division][city][position]) {
+                    for (var position2 in employeeAllocations[division][city]) ns.corporation.setAutoJobAssignment(division, city as CityName, position2, 0);
+                    for (var position2 in employeeAllocations[division][city]) ns.corporation.setAutoJobAssignment(division, city as CityName, position2, employeeAllocations[division][city][position2]);
+                }
+            }
+        }
+    }
 }
 
 function manageProducts(ns: NS, division: Division) {
@@ -223,12 +225,12 @@ function manageProducts(ns: NS, division: Division) {
         }   
         if (ns.corporation.hasResearched(division.name, "Market-TA.II")) {
             ns.corporation.setProductMarketTA2(division.name, productName, true);
-        } else if (division.research > 100000) {ns.corporation.research(division.name, "Market-TA.I"); ns.corporation.research(division.name, "Market-TA.II") }
+        } else if (division.researchPoints > 100000) {ns.corporation.research(division.name, "Market-TA.I"); ns.corporation.research(division.name, "Market-TA.II") }
     }
 
     var productNamePrefix = division.type.replaceAll(/\s/g, "");
     var products = division.products.map((productName) => { 
-        return ns.corporation.getProduct(division.name, productName);
+        return ns.corporation.getProduct(division.name, CityName.Aevum, productName);
     });
     var nextProductNumber: number = 0;
     for (var product of products) {
@@ -252,7 +254,13 @@ function levelUpgrade(ns: NS, upgradeName: CorpUpgrade, level: number) {
 
 function buyUpgrades(ns: NS) {
     corpo = ns.corporation.getCorporation();
-
+    if (ns.corporation.getUpgradeLevelCost(CorpUpgrade.WilsonAnalytics) < 3 * corpo.funds) return !(ns.corporation.getUpgradeLevelCost(CorpUpgrade.WilsonAnalytics) < corpo.funds) || ns.corporation.levelUpgrade(CorpUpgrade.WilsonAnalytics);
+    if (ns.corporation.getHireAdVertCost(tobaccoDivision.name) < corpo.funds) return ns.corporation.hireAdVert(tobaccoDivision.name);
+    if (ns.corporation.getOfficeSizeUpgradeCost(tobaccoDivision.name, CityName.Aevum, 15) < corpo.funds) return ns.corporation.upgradeOfficeSize(tobaccoDivision.name, CityName.Aevum, 15);
+    for (var city of cities.filter((city) => { return city != CityName.Aevum 
+                                                    && ns.corporation.getOffice(tobaccoDivision.name, city).size + 60 < ns.corporation.getOffice(tobaccoDivision.name, CityName.Aevum).size})) {
+        return ns.corporation.upgradeOfficeSize(tobaccoDivision.name, city, 15);
+    }
     var upgrades = enumVals(CorpUpgrade)
     for (var upgradeName of upgrades) {
         corpo = ns.corporation.getCorporation();
@@ -262,7 +270,6 @@ function buyUpgrades(ns: NS) {
             return
         }
     }
-    
 }
 
 async function manageOffices(ns: NS) {
@@ -274,14 +281,14 @@ async function manageOffices(ns: NS) {
             if (division.type == "Tobacco" && office.size < (tobaccoOfficeSizes.get(city) || 9)) {
                 ns.corporation.upgradeOfficeSize(tobaccoDivision.name, city, (tobaccoOfficeSizes.get(city) || 9) - office.size);
             }
-            if (office.employees < office.size) {
+            if (office.numEmployees < office.size) {
                 ns.corporation.hireEmployee(divisionName, city);
             }
             else {
-                if (office.avgEne < office.maxEne) {
-                    ns.corporation.buyCoffee(divisionName, city);
+                if (office.avgEnergy < office.maxEnergy) {
+                    ns.corporation.buyTea(divisionName, city);
                 }
-                if (office.avgHap < office.maxHap || office.avgMor < office.maxMor) {
+                if (office.avgMorale < office.maxMorale) {
                     ns.corporation.throwParty(divisionName, city, partyFundPerPerson);
                 }
             }
@@ -290,12 +297,12 @@ async function manageOffices(ns: NS) {
 }
 
 function buyToAmount(ns: NS, division: Division, city: CityName, materialName: string, amount: number) {
-    if (!ns.corporation.hasUnlockUpgrade("Warehouse API")) {
+    if (!ns.corporation.hasUnlock("Warehouse API")) {
         ns.print(`Missing Warehouse API, cannot autobuy materials`);
         return
     }
     var materialData: Material = ns.corporation.getMaterial(division.name, city, materialName)
-    if (materialData.qty < amount) ns.corporation.buyMaterial(division.name, city, materialName, (amount - materialData.qty)/10);
+    if (materialData.stored < amount) ns.corporation.buyMaterial(division.name, city, materialName, (amount - materialData.stored)/10);
     else ns.corporation.buyMaterial(division.name, city, materialName, 0);
 }
 
@@ -322,13 +329,13 @@ async function attemptToCreateCorp(ns: NS, corpName: string) {
     ns.print("Creating corp")
     while (!ns.corporation.hasCorporation()) {
         ns.print(`attempting to make corp ${corpName}`);
-        var createdCorp = ns.corporation.createCorporation(corpName, ns.getPlayer().bitNodeN != 3)
+        var createdCorp = ns.corporation.createCorporation(corpName, ns.getResetInfo().currentNode != 3)
         if (createdCorp) {
             ns.toast(`Created corp ${corpName}!`); 
         }
-        while (!ns.corporation.hasUnlockUpgrade("Smart Supply")){
+        while (!ns.corporation.hasUnlock("Smart Supply")){
             ns.print(`Attempting to buy smart supply`);
-            ns.corporation.unlockUpgrade("Smart Supply");
+            ns.corporation.purchaseUnlock("Smart Supply");
             await ns.sleep(1000);
         }
         await ns.sleep(5000);
@@ -351,7 +358,7 @@ async function attemptToCreateDivision(ns: NS, industry: CorpIndustryName, divis
         await ns.sleep(1000);
         division = ns.corporation.getDivision(divisionName);
     }
-    if (ns.corporation.hasUnlockUpgrade("Warehouse API")) {
+    if (ns.corporation.hasUnlock("Warehouse API")) {
         ns.print("considering warehouses")
         var warehouselessCities = division.cities.filter((cityName: CityName) => { 
             ns.print(`considering ${cityName}`);
@@ -368,24 +375,46 @@ async function attemptToCreateDivision(ns: NS, industry: CorpIndustryName, divis
 }
 
 function managePrices(ns: NS) {
+    setDivisions(ns);
     if (tobaccoDivision) {
         var products = tobaccoDivision.products;
-        for (var index in products) {
-            if (!tobaccoProductMinPrices[index]) {
-                //tobaccoProductMinPrices[index] = tobaccoDivision.pro
-            }
+        for (var product of products) {
+            managePrice(ns, product);
+            ns.corporation.sellProduct(tobaccoDivision.name, "Aevum", product, "MAX", "MP*" + (getMaxPriceMult(product) + getMinPriceMult(product))/2, true);
+            
         }
     }
 }
 
-function createEmployeeAllocation(operations: number = 0, engineer: number = 0, business: number = 0, management: number = 0, research: number = 0, training: number = 0, unassigned: number = 0) {
+function managePrice(ns:NS, productName: string) {
+    var product = ns.corporation.getProduct(tobaccoDivision.name, CityName.Aevum, productName);
+    if (!maxPriceMults.has(productName)) maxPriceMults.set(productName, 100);
+    if (!minPriceMults.has(productName)) minPriceMults.set(productName, 1);
+    if (!maxPriceResetTimers.has(productName)) maxPriceResetTimers.set(productName, 100);
+    if (product.actualSellAmount < product.productionAmount) maxPriceMults.set(productName, (getMaxPriceMult(productName) + getMinPriceMult(productName)) / 2);
+}
+
+function getMaxPriceMult(productName: string): number {
+    return maxPriceMults.get(productName) || 100;
+}
+function getMinPriceMult(productName: string): number {
+    return minPriceMults.get(productName) || 1;
+}
+
+function getPriceMult(ns: NS, product: Product): number | null {
+    var sCost = product.desiredSellPrice;
+    if (typeof(sCost) == "number") return null;
+    return Number.parseFloat(sCost.replace("MP", "").replace("*", ""));
+}
+
+function createEmployeeAllocation(operations: number = 0, engineer: number = 0, business: number = 0, management: number = 0, research: number = 0, intern: number = 0, unassigned: number = 0) {
     return {
         "Operations": operations,
         "Engineer": engineer,
         "Business": business,
         "Management": management,
         "Research & Development": research,
-        "Training": training,
+        "Intern": intern,
         "Unassigned": unassigned
     }
 }
@@ -413,12 +442,12 @@ function printCorpo(ns: NS) {
             ns.formatNumber(((division.lastCycleRevenue - division.lastCycleExpenses) / (corpo.revenue - corpo.expenses)) || 0)
         ];
         
-        for (var product of division.products.map((productName) => { return ns.corporation.getProduct(division.name, productName)})) {
+        for (var product of division.products.map((productName) => { return ns.corporation.getProduct(division.name, CityName.Aevum, productName)})) {
             var productRow: string[] = [
                 product.name,
                 ns.formatPercent(product.developmentProgress/100),
-                ns.formatNumber(product.rat),
-                product.sCost.toString()
+                ns.formatNumber(product.rating),
+                product.desiredSellPrice.toString()
             ]
             productRows.push(productRow);
         }

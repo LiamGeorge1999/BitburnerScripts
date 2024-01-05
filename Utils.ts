@@ -101,6 +101,17 @@ export class Util {
 		return serverPaths;
 	}
 
+	static async runForFiles(ns: NS, grep: string, fn: (ns: NS, file: File, ...params: any) => Promise<void>, ...params: any) {
+		ns.print(`grep: ${grep}`);
+		var files = Util.findAllFiles(ns);
+		ns.print(`[INFO] considering ${files.length} files!`);
+		for (var file of files) {
+			if (file.fileName.toUpperCase().includes(grep.toUpperCase())) {
+				await fn(ns, file, ...params);
+			}
+		}
+	}
+
 	static searchForFiles(ns: NS, grep: string) {
 		ns.print(`grep: ${grep}`);
 		var files = Util.findAllFiles(ns);

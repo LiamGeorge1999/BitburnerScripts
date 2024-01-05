@@ -27,18 +27,18 @@ export class ValidMathExpressions extends Solution {
 		super(ns, debugMode);
 	}
 
-	determine(ns: NS, input: any[]): Array<string> {
+	async determine(ns: NS, input: any[]): Promise<Array<string>> {
 		this.log("determining");
 		var inputString : string = input[0].toString();
 		var inputValue : number = input[1];
-		var candidates: Array<string> = this.generate(inputString);
+		var candidates: Array<string> = await this.generate(inputString);
 		var solutions: Array<string> = candidates.filter((candidate) => {return this.validate(candidate, inputValue)});
 		
 		this.log(`solved? ${JSON.stringify(solutions)}`);
 		return solutions;
 	}
 
-	generate(inputString: string): string[] {
+	async generate(inputString: string): Promise<string[]> {
 		this.log("generating");
 		this.log(inputString);
 		var operations = ["+", "-", "*", ""];
@@ -49,8 +49,17 @@ export class ValidMathExpressions extends Solution {
 			candidateSets.push([]);
 			for (var operator of operations) {
 				for (var candidate of candidateSets[index]) {
-					var newCandidate = candidate + operator + inputString.substring(index + 1, index + 2)
-					this.log("new candidate:" + newCandidate);
+					await this.ns.sleep(1);
+					var newCandidate = candidate + operator;
+					var additionLength = 1;
+					var nextChar = inputString.substring(index + additionLength, index + additionLength + 1 + 1)
+					do {
+						newCandidate += nextChar;
+						additionLength++;
+						nextChar = inputString.substring(index + additionLength, index + additionLength + 1 + 1)
+					}
+					while (nextChar == "0")
+					this.log("new candidate: " + newCandidate);
 					candidateSets[index+1].push(newCandidate);
 				}
 			}
@@ -59,7 +68,8 @@ export class ValidMathExpressions extends Solution {
 		return candidateSets[candidateSets.length-1];
 	}
 
-	validate(candidate: string, inputValue: number): boolean {
+	async validate(candidate: string, inputValue: number): Promise<boolean> {
+		await this.ns.sleep(1);
 		this.log(`validating ${candidate}`);
 		var valid = ExpressionEvaluator.evaluate(candidate) == inputValue;
 		this.log(`${valid? "pass":"fail"}: ${candidate} ${valid? "=":"!"}= ${inputValue}`);

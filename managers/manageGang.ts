@@ -112,10 +112,6 @@ function considerWarfare(ns: NS) {
 			scores.push(score);
 		}
 	}
-	// var scores = [];
-	// for (var score of warfareScores) {
-	// 	scores.push(score);
-	// }
 
 	postprint.push("\n" + TableMaker.makeTable(rows));
 
@@ -181,9 +177,11 @@ function considerReduceWanted(ns: NS) {
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
 	if ((1 - gangInfo.wantedPenalty) * 100 > 10 && gangInfo.wantedLevel > 2) {
 		reduceWanted = true;
+		postprint.push(`Began reducing wanted`);
 	}
 	if ((1 - gangInfo.wantedPenalty) * 100 <= 1.5 || gangInfo.wantedLevel < 1.5) {
 		reduceWanted = false;
+		postprint.push(`Stopped reducing wanted`);
 	}
 }
 
@@ -198,17 +196,14 @@ function workMembers(ns: NS, overrideTasks = true) {
 	if (!overrideTasks) members = members.filter((member: any) => {
 		return ns.gang.getMemberInformation(member).task == GangMemberTask.Unassigned;
 	});
-	var idleMembers: string[] = [];
-	for (var member of members) {
-		gangInfo = ns.gang.getGangInformation();
-		if (gangInfo.respect < 100000 || bolsterRespect) {
-			ns.gang.setMemberTask(member, GangMemberTask.Terrorism);
-		} else if (wageWar) {
-			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
-
-		} else if (reduceWanted) {
-			ns.gang.setMemberTask(member, GangMemberTask.VigilanteJustice);
-		} else if (ns.fileExists("Formulas.exe")) {
+	if (gangInfo.respect < 10000 || bolsterRespect) {
+		return setMembersTask(ns, GangMemberTask.Terrorism);
+	} else if (wageWar && warfareScore > 1.1) {
+		return setMembersTask(ns, GangMemberTask.TerritoryWarfare);
+	} else if (reduceWanted) {
+		return setMembersTask(ns, GangMemberTask.VigilanteJustice);
+	} else if (ns.fileExists("Formulas.exe")) {
+		for (var member of members) {
 			for (var task of ns.gang.getTaskNames()) {
 				var memberInfo: GangMemberInfo = ns.gang.getMemberInformation(member);
 				var currentTaskStats = ns.gang.getTaskStats(memberInfo.task);
@@ -216,15 +211,18 @@ function workMembers(ns: NS, overrideTasks = true) {
 					ns.gang.setMemberTask(member, task);
 				}
 			}
-		} else {
-			postprint.push(`Defaulted ${member} to ${GangMemberTask.ArmedRobbery}.`);
-			ns.gang.setMemberTask(member, GangMemberTask.ArmedRobbery);
 		}
-		if (warfareScore > 1.1) {
-			ns.gang.setMemberTask(member, GangMemberTask.TerritoryWarfare);
-		}
+		return
+	} else {
+		return setMembersTask(ns, GangMemberTask.ArmedRobbery);
 	}
+}
 
+function setMembersTask(ns: NS, task: GangMemberTask) {
+	let members: string[] = ns.gang.getMemberNames();
+	for (var member of members) {
+		ns.gang.setMemberTask(member, task);
+	}
 }
 
 /** Sets gang members to training, where sensible.
@@ -262,9 +260,9 @@ function trainMembers(ns: NS, overrideTasks = true) {
 function printStats(ns: NS) {
 	let members: string[] = ns.gang.getMemberNames();
 	let gangInfo: GangGenInfo = ns.gang.getGangInformation();
-	preprint.push(`money gained: $${ns.formatNumber(ns.getPlayer().money - startingMoney)} @ $${ns.formatNumber(gangInfo.moneyGainRate*ticksPerSec)}/s`);
+	preprint.push(`money gained: $${ns.formatNumber(ns.getPlayer().money - startingMoney)} @ $${ns.formatNumber(gangInfo.moneyGainRate*ticksPerSec)}/s`); 
 	preprint.push(`wanted level:  ${ns.formatNumber(gangInfo.wantedLevel)} ${reduceWanted ? "(reducing)" : ""} @ ${ns.formatNumber(gangInfo.wantedLevelGainRate*ticksPerSec)}/s`);
-	preprint.push(`wanted penalty percentage: -${ns.formatNumber((1 - gangInfo.wantedPenalty))}%`);
+	preprint.push(`wanted penalty percentage: ${ns.formatPercent(1-gangInfo.wantedPenalty)}`);
 	preprint.push(`Respect: ${ns.formatNumber(gangInfo.respect)} @ ${ns.formatNumber(gangInfo.respectGainRate)}/s`)
 	preprint.push(`power: ${ns.formatNumber(gangInfo.power)}`);
 	preprint.push(`warfare score: ${ns.formatNumber(warfareScore)}`);
@@ -273,7 +271,7 @@ function printStats(ns: NS) {
 
 	//TODO: Print price of all combat/hacking augs/rootkits per member
 
-	//livePrint.push(`Full aug price per member: ${}`);
+	//livePrint.push(`Full aug price per member: ${}`);sprint
 	ns.print(preprint.join("\n"));
 	ns.print(getMemberTable(ns));
 	ns.print(postprint.join("\n"));

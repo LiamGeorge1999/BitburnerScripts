@@ -15,7 +15,7 @@ export async function main(ns: NS) {
 			if (ns.getServerRequiredHackingLevel(target) < hackingLevel && await util.ownServer(ns, target)) {
 
 				//await ns.sleep(Math.ceil(ns.getHackTime(target)));
-				util.jump(host);
+				Util.jump(ns, host);
 				completedTargets.push(target);
 				ns.run("connect.js", 1, target, true);
 				Util.runTerminalCommand("home");
